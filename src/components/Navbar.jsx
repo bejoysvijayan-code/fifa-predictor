@@ -53,6 +53,10 @@ export default function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Navbar is only rendered inside <Layout> (authenticated pages).
+  // This guard prevents any crash if auth state hasn't resolved yet.
+  if (!user) return null;
+
   async function handleLogout() {
     await logout();
     navigate('/login');

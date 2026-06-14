@@ -1,9 +1,10 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Navbar from './components/Navbar';
 
+import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Matches from './pages/Matches';
@@ -21,19 +22,44 @@ function Layout({ children }) {
   );
 }
 
+// Shows Landing page for guests, Dashboard for authenticated users
+function SmartRoot() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div
+        className="flex items-center justify-center min-h-screen"
+        style={{ background: 'var(--c-page)' }}
+      >
+        <div className="spinner" style={{ width: 36, height: 36 }} />
+      </div>
+    );
+  }
+
+  if (!user) return <Landing />;
+  return <Layout><Dashboard /></Layout>;
+}
+
 export default function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
         <BrowserRouter basename={import.meta.env.BASE_URL}>
           <Routes>
+            {/* Public root — Landing for guests, Dashboard for logged-in */}
+            <Route path="/" element={<SmartRoot />} />
+
+            {/* Auth page */}
             <Route path="/login" element={<Login />} />
-            <Route path="/" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
-            <Route path="/matches" element={<ProtectedRoute><Layout><Matches /></Layout></ProtectedRoute>} />
+
+            {/* Protected pages */}
+            <Route path="/matches"        element={<ProtectedRoute><Layout><Matches /></Layout></ProtectedRoute>} />
             <Route path="/my-predictions" element={<ProtectedRoute><Layout><MyPredictions /></Layout></ProtectedRoute>} />
-            <Route path="/leaderboard" element={<ProtectedRoute><Layout><Leaderboard /></Layout></ProtectedRoute>} />
-            <Route path="/profile" element={<ProtectedRoute><Layout><Profile /></Layout></ProtectedRoute>} />
-            <Route path="/admin" element={<ProtectedRoute adminOnly><Layout><AdminPanel /></Layout></ProtectedRoute>} />
+            <Route path="/leaderboard"    element={<ProtectedRoute><Layout><Leaderboard /></Layout></ProtectedRoute>} />
+            <Route path="/profile"        element={<ProtectedRoute><Layout><Profile /></Layout></ProtectedRoute>} />
+            <Route path="/admin"          element={<ProtectedRoute adminOnly><Layout><AdminPanel /></Layout></ProtectedRoute>} />
+
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </BrowserRouter>

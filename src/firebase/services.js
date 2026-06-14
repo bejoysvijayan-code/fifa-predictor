@@ -260,6 +260,35 @@ export async function importHistoricalMatch({ matchNumber, homeTeam, awayTeam, k
   return matchRef.id;
 }
 
+// ── Public Landing Data ────────────────────────────────
+
+export async function getPublicData() {
+  const [matches, allPredictions, allUsers] = await Promise.all([
+    getMatches(),
+    getAllPredictions(),
+    getAllUsers(),
+  ]);
+
+  // Aggregate crowd prediction counts per match
+  const predCounts = {};
+  allPredictions.forEach((p) => {
+    if (!predCounts[p.matchId]) predCounts[p.matchId] = {};
+    predCounts[p.matchId][p.prediction] = (predCounts[p.matchId][p.prediction] || 0) + 1;
+  });
+
+  const realUsers = allUsers.filter((u) => !u.isManual && u.email);
+  const visibleUsers = allUsers.filter((u) => !u.hideFromLeaderboard);
+
+  return {
+    matches,
+    predCounts,
+    totalUsers: realUsers.length,
+    totalPredictions: allPredictions.length,
+    activeMatches: matches.filter((m) => m.status === 'live' || m.status === 'upcoming').length,
+    leaderboard: visibleUsers,
+  };
+}
+
 // ── Leaderboard Recalculation ──────────────────────────
 
 export async function recalculateLeaderboard() {
