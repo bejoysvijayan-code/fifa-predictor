@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { getPublicData } from '../firebase/services';
+import { getPublicMatches } from '../firebase/services';
 import CircleFlag from '../components/CircleFlag';
 import ThemeToggle from '../components/ThemeToggle';
 import { formatKickoff } from '../utils/scoring';
@@ -148,9 +148,9 @@ export default function Login() {
   }, [user, navigate]);
 
   useEffect(() => {
-    getPublicData()
+    getPublicMatches()
       .then((d) => setData(d))
-      .catch(() => setData({ matches: [], predCounts: {} }))
+      .catch((err) => { console.error('getPublicMatches failed:', err); setData({ matches: [], predCounts: {} }); })
       .finally(() => setLoading(false));
   }, []);
 

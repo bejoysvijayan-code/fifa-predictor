@@ -289,6 +289,20 @@ export async function getPublicData() {
   };
 }
 
+// Lightweight public fetch — no auth required (matches + predictions only)
+export async function getPublicMatches() {
+  const [matches, allPredictions] = await Promise.all([
+    getMatches(),
+    getAllPredictions(),
+  ]);
+  const predCounts = {};
+  allPredictions.forEach((p) => {
+    if (!predCounts[p.matchId]) predCounts[p.matchId] = {};
+    predCounts[p.matchId][p.prediction] = (predCounts[p.matchId][p.prediction] || 0) + 1;
+  });
+  return { matches, predCounts };
+}
+
 // ── Leaderboard Recalculation ──────────────────────────
 
 export async function recalculateLeaderboard() {
