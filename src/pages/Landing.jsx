@@ -57,7 +57,7 @@ function LandingNav({ onSignIn }) {
             ⚽
           </div>
           <span className="font-bold text-[15px] tracking-tight" style={{ color: 'var(--c-t1)' }}>
-            FIFA Predictor
+            JNVN98: FIFA Arena
           </span>
         </div>
 
@@ -558,7 +558,7 @@ function LandingFooter() {
       className="text-center py-6 text-xs"
       style={{ color: 'var(--c-t3)', background: 'var(--c-page)', borderTop: '1px solid var(--c-border)' }}
     >
-      FIFA Predictor · Fan-made prediction platform · Not affiliated with FIFA
+      JNVN98: FIFA Arena · Fan-made prediction platform · Not affiliated with FIFA
     </footer>
   );
 }

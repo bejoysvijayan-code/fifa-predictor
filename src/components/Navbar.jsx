@@ -96,7 +96,7 @@ export default function Navbar() {
               ⚽
             </div>
             <span className="font-bold text-[15px] tracking-tight hidden sm:inline" style={{ color: 'var(--c-t1)' }}>
-              FIFA Predictor
+              JNVN98: FIFA Arena
             </span>
           </Link>
 

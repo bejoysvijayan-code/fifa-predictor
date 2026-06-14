@@ -180,7 +180,7 @@ export default function Login() {
               ⚽
             </div>
             <span className="font-bold text-[15px] tracking-tight" style={{ color: 'var(--c-t1)' }}>
-              FIFA Predictor
+              JNVN98: FIFA Arena
             </span>
           </div>
           <div className="flex items-center gap-2">
