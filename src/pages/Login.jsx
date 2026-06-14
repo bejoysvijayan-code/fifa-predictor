@@ -24,21 +24,24 @@ export default function Login() {
   return (
     <div
       className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden"
-      style={{ background: '#07070F' }}
+      style={{ background: 'var(--c-page)', transition: 'background 0.2s ease' }}
     >
-      {/* Background orbs */}
+      {/* Decorative orbs — subtle in both themes */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <div
-          className="absolute rounded-full opacity-20"
-          style={{ top: '15%', left: '20%', width: 320, height: 320, background: '#5B6CF8', filter: 'blur(100px)' }}
+          className="absolute rounded-full"
+          style={{ top: '15%', left: '20%', width: 320, height: 320,
+            background: 'var(--c-primary)', filter: 'blur(100px)', opacity: 0.12 }}
         />
         <div
-          className="absolute rounded-full opacity-10"
-          style={{ bottom: '20%', right: '15%', width: 400, height: 400, background: '#8B5CF6', filter: 'blur(120px)' }}
+          className="absolute rounded-full"
+          style={{ bottom: '20%', right: '15%', width: 400, height: 400,
+            background: '#8B5CF6', filter: 'blur(120px)', opacity: 0.08 }}
         />
         <div
-          className="absolute rounded-full opacity-12"
-          style={{ top: '60%', left: '55%', width: 200, height: 200, background: '#F0B429', filter: 'blur(80px)' }}
+          className="absolute rounded-full"
+          style={{ top: '60%', left: '55%', width: 200, height: 200,
+            background: 'var(--c-gold)', filter: 'blur(80px)', opacity: 0.08 }}
         />
       </div>
 
@@ -49,15 +52,15 @@ export default function Login() {
             className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-5"
             style={{
               background: 'linear-gradient(135deg, #5B6CF8, #8B5CF6)',
-              boxShadow: '0 8px 32px rgba(91,108,248,0.4)',
+              boxShadow: '0 8px 32px rgba(91,108,248,0.35)',
             }}
           >
             ⚽
           </div>
-          <h1 className="text-[28px] font-bold tracking-tight" style={{ color: '#E8EAFF' }}>
+          <h1 className="text-[28px] font-bold tracking-tight" style={{ color: 'var(--c-t1)' }}>
             FIFA Predictor
           </h1>
-          <p className="mt-2 text-[14px]" style={{ color: 'rgba(255,255,255,0.38)' }}>
+          <p className="mt-2 text-[14px]" style={{ color: 'var(--c-t3)' }}>
             World Cup 2026 · Predict. Compete. Win.
           </p>
         </div>
@@ -66,12 +69,13 @@ export default function Login() {
         <div
           className="rounded-2xl p-7"
           style={{
-            background: 'rgba(13, 13, 26, 0.92)',
-            border: '1px solid rgba(255,255,255,0.09)',
-            boxShadow: '0 4px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05)',
+            background: 'var(--c-card)',
+            border: '1px solid var(--c-border)',
+            boxShadow: 'var(--c-shadow)',
+            transition: 'background 0.2s, border-color 0.2s',
           }}
         >
-          <p className="text-center text-[13px] font-medium mb-5" style={{ color: 'rgba(255,255,255,0.45)' }}>
+          <p className="text-center text-[13px] font-medium mb-5" style={{ color: 'var(--c-t2)' }}>
             Sign in to start predicting
           </p>
           <button
@@ -79,16 +83,17 @@ export default function Login() {
             className="flex items-center justify-center gap-3 w-full font-semibold py-3 px-4 rounded-xl text-[14px] transition-all duration-200 active:scale-[0.98]"
             style={{
               background: '#ffffff',
-              color: '#111',
-              boxShadow: '0 2px 10px rgba(0,0,0,0.3)',
+              color: '#111827',
+              border: '1px solid rgba(0,0,0,0.10)',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = '#F4F4F8')}
+            onMouseEnter={(e) => (e.currentTarget.style.background = '#F9FAFB')}
             onMouseLeave={(e) => (e.currentTarget.style.background = '#ffffff')}
           >
             <GoogleIcon />
             Continue with Google
           </button>
-          <p className="text-center text-[11px] mt-5" style={{ color: 'rgba(255,255,255,0.2)' }}>
+          <p className="text-center text-[11px] mt-5" style={{ color: 'var(--c-t3)' }}>
             By signing in, you agree to participate in good faith.
           </p>
         </div>
@@ -98,7 +103,7 @@ export default function Login() {
           {[['⚽', 'Pick winners'], ['🏆', 'Earn points'], ['📊', 'Track rank']].map(([icon, text]) => (
             <div key={text} className="flex flex-col items-center gap-1.5">
               <span className="text-xl">{icon}</span>
-              <span className="text-[11px] font-medium" style={{ color: 'rgba(255,255,255,0.28)' }}>{text}</span>
+              <span className="text-[11px] font-medium" style={{ color: 'var(--c-t3)' }}>{text}</span>
             </div>
           ))}
         </div>

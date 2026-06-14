@@ -23,10 +23,10 @@ export default function Leaderboard() {
   return (
     <div className="max-w-2xl mx-auto px-4 py-7 animate-fade-in">
       <div className="mb-6">
-        <h1 className="text-[26px] font-bold tracking-tight" style={{ color: '#E8EAFF' }}>
+        <h1 className="text-[26px] font-bold tracking-tight" style={{ color: 'var(--c-t1)' }}>
           Leaderboard
         </h1>
-        <p className="text-[13px] mt-1" style={{ color: 'rgba(255,255,255,0.32)' }}>
+        <p className="text-[13px] mt-1" style={{ color: 'var(--c-t2)' }}>
           Ranked by correct picks · accuracy · points
         </p>
       </div>

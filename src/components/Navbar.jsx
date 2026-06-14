@@ -1,5 +1,6 @@
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import ThemeToggle from './ThemeToggle';
 
 function IconHome() {
   return (
@@ -66,12 +67,12 @@ export default function Navbar() {
       src={user.photoURL}
       alt={user.displayName}
       className="w-8 h-8 rounded-full"
-      style={{ border: '2px solid rgba(255,255,255,0.12)' }}
+      style={{ border: '2px solid var(--c-border-s)' }}
     />
   ) : (
     <div
-      className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white"
-      style={{ background: '#5B6CF8' }}
+      className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold"
+      style={{ background: 'var(--c-primary)', color: '#fff' }}
     >
       {user?.displayName?.[0] || '?'}
     </div>
@@ -90,25 +91,23 @@ export default function Navbar() {
             >
               ⚽
             </div>
-            <span className="font-bold text-white text-[15px] tracking-tight hidden sm:inline">
+            <span className="font-bold text-[15px] tracking-tight hidden sm:inline" style={{ color: 'var(--c-t1)' }}>
               FIFA Predictor
             </span>
           </Link>
 
-          {/* Desktop nav */}
+          {/* Desktop nav links */}
           <div className="hidden md:flex items-center gap-0.5">
             {TABS.slice(0, -1).map(({ to, label }) => (
               <NavLink
                 key={to}
                 to={to}
                 end={to === '/'}
-                className={({ isActive }) =>
-                  `px-3 py-2 rounded-xl text-[13px] font-medium transition-all duration-150 ${
-                    isActive
-                      ? 'text-[#8B9CFF] bg-[rgba(91,108,248,0.10)]'
-                      : 'text-[#6B7280] hover:text-[#E8EAFF] hover:bg-white/[0.04]'
-                  }`
-                }
+                className="px-3 py-2 rounded-xl text-[13px] font-medium transition-all duration-150"
+                style={({ isActive }) => ({
+                  color: isActive ? 'var(--c-primary)' : 'var(--c-t2)',
+                  background: isActive ? 'var(--c-primary-bg)' : 'transparent',
+                })}
               >
                 {label}
               </NavLink>
@@ -116,35 +115,38 @@ export default function Navbar() {
             {user?.isAdmin && (
               <NavLink
                 to="/admin"
-                className={({ isActive }) =>
-                  `px-3 py-2 rounded-xl text-[13px] font-medium transition-all duration-150 ${
-                    isActive
-                      ? 'text-[#F0B429] bg-[rgba(240,180,41,0.10)]'
-                      : 'text-[#F0B429]/50 hover:text-[#F0B429] hover:bg-white/[0.04]'
-                  }`
-                }
+                className="px-3 py-2 rounded-xl text-[13px] font-medium transition-all duration-150"
+                style={({ isActive }) => ({
+                  color: 'var(--c-gold)',
+                  background: isActive ? 'var(--c-gold-bg)' : 'transparent',
+                  opacity: isActive ? 1 : 0.65,
+                })}
               >
                 Admin
               </NavLink>
             )}
           </div>
 
-          {/* Desktop: avatar + logout */}
-          <div className="hidden md:flex items-center gap-3">
+          {/* Desktop: theme toggle + avatar + logout */}
+          <div className="hidden md:flex items-center gap-2">
+            <ThemeToggle />
             <NavLink to="/profile">{avatar}</NavLink>
             <button
               onClick={handleLogout}
               className="text-[12px] font-medium px-2 py-1 rounded-lg transition-colors"
-              style={{ color: 'rgba(255,255,255,0.25)' }}
-              onMouseEnter={(e) => (e.target.style.color = '#EF4444')}
-              onMouseLeave={(e) => (e.target.style.color = 'rgba(255,255,255,0.25)')}
+              style={{ color: 'var(--c-t3)' }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--c-red)')}
+              onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--c-t3)')}
             >
               Logout
             </button>
           </div>
 
-          {/* Mobile: avatar only */}
-          <NavLink to="/profile" className="md:hidden">{avatar}</NavLink>
+          {/* Mobile: theme toggle + avatar */}
+          <div className="md:hidden flex items-center gap-2">
+            <ThemeToggle size={32} />
+            <NavLink to="/profile">{avatar}</NavLink>
+          </div>
         </div>
       </nav>
 
@@ -152,11 +154,12 @@ export default function Navbar() {
       <div
         className="md:hidden fixed bottom-0 left-0 right-0 z-50"
         style={{
-          background: 'rgba(7, 7, 15, 0.92)',
+          background: 'var(--c-nav)',
           backdropFilter: 'blur(20px)',
           WebkitBackdropFilter: 'blur(20px)',
-          borderTop: '1px solid rgba(255, 255, 255, 0.07)',
+          borderTop: '1px solid var(--c-nav-bd)',
           paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+          transition: 'background 0.2s ease, border-color 0.2s ease',
         }}
       >
         <div className="flex">
@@ -166,14 +169,15 @@ export default function Navbar() {
               <Link
                 key={to}
                 to={to}
-                className="flex-1 flex flex-col items-center justify-center py-3 gap-1 transition-colors"
+                className="flex-1 flex flex-col items-center justify-center py-3 gap-1"
+                style={{ transition: 'color 0.15s' }}
               >
-                <span style={{ color: active ? '#5B6CF8' : 'rgba(255,255,255,0.28)' }}>
+                <span style={{ color: active ? 'var(--c-primary)' : 'var(--c-t3)' }}>
                   <Icon />
                 </span>
                 <span
                   className="text-[10px] font-medium"
-                  style={{ color: active ? '#8B9CFF' : 'rgba(255,255,255,0.28)' }}
+                  style={{ color: active ? 'var(--c-primary)' : 'var(--c-t3)' }}
                 >
                   {label}
                 </span>

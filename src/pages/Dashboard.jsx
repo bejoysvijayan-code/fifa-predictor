@@ -53,10 +53,10 @@ export default function Dashboard() {
       {/* Welcome header */}
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-[12px] font-medium uppercase tracking-widest mb-1" style={{ color: 'rgba(255,255,255,0.28)' }}>
+          <p className="text-[12px] font-medium uppercase tracking-widest mb-1" style={{ color: 'var(--c-t3)' }}>
             Welcome back
           </p>
-          <h1 className="text-[26px] font-bold tracking-tight" style={{ color: '#E8EAFF' }}>
+          <h1 className="text-[26px] font-bold tracking-tight" style={{ color: 'var(--c-t1)' }}>
             {firstName} 👋
           </h1>
         </div>
@@ -64,12 +64,13 @@ export default function Dashboard() {
           <div
             className="rounded-2xl px-4 py-2.5 text-center"
             style={{
-              background: 'rgba(240,180,41,0.10)',
-              border: '1px solid rgba(240,180,41,0.22)',
+              background: 'var(--c-gold-bg)',
+              border: '1px solid var(--c-gold-bd)',
+              transition: 'background 0.2s, border-color 0.2s',
             }}
           >
-            <div className="text-xl font-bold" style={{ color: '#F0B429' }}>#{rank}</div>
-            <div className="text-[10px] font-bold uppercase tracking-widest mt-0.5" style={{ color: 'rgba(240,180,41,0.55)' }}>
+            <div className="text-xl font-bold" style={{ color: 'var(--c-gold)' }}>#{rank}</div>
+            <div className="text-[10px] font-bold uppercase tracking-widest mt-0.5" style={{ color: 'var(--c-t3)' }}>
               Your Rank
             </div>
           </div>
@@ -87,7 +88,7 @@ export default function Dashboard() {
               className="w-2 h-2 rounded-full animate-pulse"
               style={{ background: '#EF4444', boxShadow: '0 0 6px rgba(239,68,68,0.8)' }}
             />
-            <h2 className="text-[15px] font-semibold" style={{ color: '#E8EAFF' }}>Live Now</h2>
+            <h2 className="text-[15px] font-semibold" style={{ color: 'var(--c-t1)' }}>Live Now</h2>
           </div>
           <div className="space-y-3">
             {live.map((m) => (
@@ -100,11 +101,11 @@ export default function Dashboard() {
       {/* Upcoming */}
       <section>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-[15px] font-semibold" style={{ color: '#E8EAFF' }}>Upcoming Matches</h2>
+          <h2 className="text-[15px] font-semibold" style={{ color: 'var(--c-t1)' }}>Upcoming Matches</h2>
           <Link
             to="/matches"
             className="text-[13px] font-medium transition-opacity hover:opacity-80"
-            style={{ color: '#8B9CFF' }}
+            style={{ color: 'var(--c-primary)' }}
           >
             View all →
           </Link>
@@ -112,10 +113,10 @@ export default function Dashboard() {
         {upcoming.length === 0 ? (
           <div
             className="rounded-2xl py-12 flex flex-col items-center gap-2"
-            style={{ background: '#0D0D1A', border: '1px solid rgba(255,255,255,0.06)' }}
+            style={{ background: 'var(--c-card)', border: '1px solid var(--c-border)' }}
           >
             <span className="text-3xl">📅</span>
-            <p className="text-[13px]" style={{ color: 'rgba(255,255,255,0.28)' }}>No upcoming matches scheduled</p>
+            <p className="text-[13px]" style={{ color: 'var(--c-t3)' }}>No upcoming matches scheduled</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -132,23 +133,25 @@ export default function Dashboard() {
           to="/leaderboard"
           className="rounded-2xl p-5 flex flex-col items-center gap-2 transition-all duration-200 hover:scale-[1.02]"
           style={{
-            background: 'linear-gradient(135deg, rgba(91,108,248,0.12), rgba(139,92,246,0.07))',
-            border: '1px solid rgba(91,108,248,0.18)',
+            background: 'var(--c-primary-bg)',
+            border: '1px solid var(--c-primary-bd)',
+            transition: 'background 0.2s, border-color 0.2s',
           }}
         >
           <span className="text-3xl">🏆</span>
-          <span className="text-[13px] font-semibold" style={{ color: '#8B9CFF' }}>Leaderboard</span>
+          <span className="text-[13px] font-semibold" style={{ color: 'var(--c-primary)' }}>Leaderboard</span>
         </Link>
         <Link
           to="/my-predictions"
           className="rounded-2xl p-5 flex flex-col items-center gap-2 transition-all duration-200 hover:scale-[1.02]"
           style={{
-            background: 'linear-gradient(135deg, rgba(240,180,41,0.10), rgba(249,115,22,0.06))',
-            border: '1px solid rgba(240,180,41,0.18)',
+            background: 'var(--c-gold-bg)',
+            border: '1px solid var(--c-gold-bd)',
+            transition: 'background 0.2s, border-color 0.2s',
           }}
         >
           <span className="text-3xl">📋</span>
-          <span className="text-[13px] font-semibold" style={{ color: '#F0B429' }}>My Predictions</span>
+          <span className="text-[13px] font-semibold" style={{ color: 'var(--c-gold)' }}>My Predictions</span>
         </Link>
       </div>
     </div>

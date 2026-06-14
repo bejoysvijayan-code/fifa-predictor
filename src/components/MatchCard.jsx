@@ -32,13 +32,20 @@ export default function MatchCard({ match, userPrediction, onPredictionSaved }) 
     }
   }
 
+  const predStyle =
+    predStatus === 'correct'
+      ? { background: 'var(--c-green-bg)', border: '1px solid var(--c-green-bd)', color: 'var(--c-green)' }
+      : predStatus === 'incorrect'
+      ? { background: 'var(--c-red-bg)', border: '1px solid var(--c-red-bd)', color: 'var(--c-red)' }
+      : { background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-t3)' };
+
   return (
     <div
       className="rounded-2xl p-5 transition-all duration-200"
       style={{
-        background: '#0D0D1A',
-        border: '1px solid rgba(255,255,255,0.07)',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.4)',
+        background: 'var(--c-card)',
+        border: '1px solid var(--c-border)',
+        boxShadow: 'var(--c-shadow)',
       }}
     >
       {/* Header */}
@@ -46,12 +53,12 @@ export default function MatchCard({ match, userPrediction, onPredictionSaved }) 
         <div className="flex items-center gap-2">
           {STATUS_BADGE[match.status]}
           {match.matchNumber != null && (
-            <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'rgba(240,180,41,0.65)' }}>
+            <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--c-gold)' }}>
               #{match.matchNumber}
             </span>
           )}
         </div>
-        <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.3)' }}>
+        <span className="text-[11px]" style={{ color: 'var(--c-t3)' }}>
           {formatKickoff(match.kickoffTime)}
         </span>
       </div>
@@ -60,7 +67,7 @@ export default function MatchCard({ match, userPrediction, onPredictionSaved }) 
       <div className="flex items-center justify-between gap-3">
         <div className="flex-1 text-center">
           <div className="text-4xl mb-2">{getFlag(match.homeTeam)}</div>
-          <div className="text-[13px] font-semibold leading-tight" style={{ color: '#E8EAFF' }}>
+          <div className="text-[13px] font-semibold leading-tight" style={{ color: 'var(--c-t1)' }}>
             {match.homeTeam}
           </div>
         </div>
@@ -68,21 +75,21 @@ export default function MatchCard({ match, userPrediction, onPredictionSaved }) 
         <div className="flex-shrink-0 text-center px-1 min-w-[64px]">
           {match.status === 'completed' && match.result ? (
             <>
-              <div className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: 'rgba(255,255,255,0.25)' }}>
+              <div className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--c-t3)' }}>
                 Winner
               </div>
-              <div className="text-[13px] font-bold" style={{ color: '#F0B429' }}>
+              <div className="text-[13px] font-bold" style={{ color: 'var(--c-gold)' }}>
                 {match.result.winner === 'Draw' ? '🤝 Draw' : match.result.winner}
               </div>
             </>
           ) : (
-            <div className="text-[14px] font-bold" style={{ color: 'rgba(255,255,255,0.2)' }}>VS</div>
+            <div className="text-[14px] font-bold" style={{ color: 'var(--c-t3)' }}>VS</div>
           )}
         </div>
 
         <div className="flex-1 text-center">
           <div className="text-4xl mb-2">{getFlag(match.awayTeam)}</div>
-          <div className="text-[13px] font-semibold leading-tight" style={{ color: '#E8EAFF' }}>
+          <div className="text-[13px] font-semibold leading-tight" style={{ color: 'var(--c-t1)' }}>
             {match.awayTeam}
           </div>
         </div>
@@ -94,13 +101,7 @@ export default function MatchCard({ match, userPrediction, onPredictionSaved }) 
           {match.status === 'completed' && localPrediction ? (
             <div
               className="flex items-center justify-between text-[12px] font-semibold px-4 py-3 rounded-xl"
-              style={
-                predStatus === 'correct'
-                  ? { background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)', color: '#4ADE80' }
-                  : predStatus === 'incorrect'
-                  ? { background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#FF7676' }
-                  : { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.38)' }
-              }
+              style={predStyle}
             >
               <span>Your pick: <strong>{localPrediction}</strong></span>
               <span>
@@ -108,7 +109,7 @@ export default function MatchCard({ match, userPrediction, onPredictionSaved }) 
               </span>
             </div>
           ) : match.status === 'completed' && !localPrediction ? (
-            <div className="text-center text-[11px] py-2" style={{ color: 'rgba(255,255,255,0.2)' }}>
+            <div className="text-center text-[11px] py-2" style={{ color: 'var(--c-t3)' }}>
               No prediction made
             </div>
           ) : (
@@ -121,12 +122,12 @@ export default function MatchCard({ match, userPrediction, onPredictionSaved }) 
                 onSelect={handleSelect}
               />
               {locked && !localPrediction && (
-                <p className="text-[11px] text-center mt-2" style={{ color: 'rgba(255,255,255,0.2)' }}>
+                <p className="text-[11px] text-center mt-2" style={{ color: 'var(--c-t3)' }}>
                   🔒 Predictions locked — match has started
                 </p>
               )}
               {saving && (
-                <p className="text-[11px] text-center mt-2" style={{ color: '#8B9CFF' }}>Saving…</p>
+                <p className="text-[11px] text-center mt-2" style={{ color: 'var(--c-primary)' }}>Saving…</p>
               )}
             </>
           )}

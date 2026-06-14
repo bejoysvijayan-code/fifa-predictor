@@ -20,23 +20,24 @@ export default function PredictionButtonGroup({ homeTeam, awayTeam, selected, lo
             style={
               isSelected
                 ? {
-                    background: 'rgba(91,108,248,0.18)',
-                    border: '1px solid rgba(91,108,248,0.45)',
-                    color: '#8B9CFF',
-                    boxShadow: '0 0 18px rgba(91,108,248,0.18)',
+                    background: 'var(--c-primary-bg)',
+                    border: '1px solid var(--c-primary-bd)',
+                    color: 'var(--c-primary)',
+                    boxShadow: '0 0 16px var(--c-primary-bg)',
                     transform: 'scale(1.03)',
                   }
                 : locked
                 ? {
-                    background: 'rgba(255,255,255,0.02)',
-                    border: '1px solid rgba(255,255,255,0.05)',
-                    color: 'rgba(255,255,255,0.18)',
+                    background: 'var(--c-surface)',
+                    border: '1px solid var(--c-border)',
+                    color: 'var(--c-t3)',
                     cursor: 'not-allowed',
+                    opacity: 0.5,
                   }
                 : {
-                    background: 'rgba(255,255,255,0.04)',
-                    border: '1px solid rgba(255,255,255,0.09)',
-                    color: 'rgba(255,255,255,0.5)',
+                    background: 'var(--c-surface)',
+                    border: '1px solid var(--c-border)',
+                    color: 'var(--c-t2)',
                     cursor: 'pointer',
                   }
             }

@@ -40,10 +40,10 @@ export default function Profile() {
   }
 
   const statItems = [
-    { label: 'Predictions', value: stats?.totalPredictions ?? 0, color: 'rgba(255,255,255,0.78)' },
-    { label: 'Correct', value: stats?.correctPredictions ?? 0, color: '#4ADE80' },
-    { label: 'Accuracy', value: `${(stats?.accuracyPercentage ?? 0).toFixed(1)}%`, color: '#8B9CFF' },
-    { label: 'Points', value: stats?.totalPoints ?? 0, color: '#F0B429' },
+    { label: 'Predictions', value: stats?.totalPredictions ?? 0, color: 'var(--c-t1)' },
+    { label: 'Correct',     value: stats?.correctPredictions ?? 0, color: 'var(--c-green)' },
+    { label: 'Accuracy',    value: `${(stats?.accuracyPercentage ?? 0).toFixed(1)}%`, color: 'var(--c-primary)' },
+    { label: 'Points',      value: stats?.totalPoints ?? 0, color: 'var(--c-gold)' },
   ];
 
   const rankMedal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : null;
@@ -54,8 +54,9 @@ export default function Profile() {
       <div
         className="rounded-2xl p-7 flex flex-col items-center text-center"
         style={{
-          background: 'linear-gradient(160deg, rgba(91,108,248,0.12) 0%, rgba(13,13,26,0.95) 100%)',
-          border: '1px solid rgba(91,108,248,0.18)',
+          background: 'linear-gradient(160deg, var(--c-primary-bg) 0%, var(--c-card) 100%)',
+          border: '1px solid var(--c-primary-bd)',
+          transition: 'background 0.2s, border-color 0.2s',
         }}
       >
         <div className="relative mb-4">
@@ -65,16 +66,17 @@ export default function Profile() {
               alt={user.displayName}
               className="w-20 h-20 rounded-full"
               style={{
-                border: '3px solid rgba(91,108,248,0.4)',
-                boxShadow: '0 0 28px rgba(91,108,248,0.25)',
+                border: '3px solid var(--c-primary-bd)',
+                boxShadow: '0 0 28px var(--c-primary-bg)',
               }}
             />
           ) : (
             <div
-              className="w-20 h-20 rounded-full flex items-center justify-center text-2xl font-bold text-white"
+              className="w-20 h-20 rounded-full flex items-center justify-center text-2xl font-bold"
               style={{
                 background: 'linear-gradient(135deg, #5B6CF8, #8B5CF6)',
-                boxShadow: '0 0 28px rgba(91,108,248,0.3)',
+                color: '#fff',
+                boxShadow: '0 0 28px var(--c-primary-bg)',
               }}
             >
               {user.displayName?.[0] || '?'}
@@ -84,13 +86,13 @@ export default function Profile() {
             <div className="absolute -bottom-1 -right-1 text-xl">{rankMedal}</div>
           )}
         </div>
-        <h1 className="text-[20px] font-bold" style={{ color: '#E8EAFF' }}>{user.displayName}</h1>
-        <p className="text-[13px] mt-1" style={{ color: 'rgba(255,255,255,0.35)' }}>{user.email}</p>
+        <h1 className="text-[20px] font-bold" style={{ color: 'var(--c-t1)' }}>{user.displayName}</h1>
+        <p className="text-[13px] mt-1" style={{ color: 'var(--c-t2)' }}>{user.email}</p>
         <div className="flex items-center gap-2.5 mt-4 flex-wrap justify-center">
           {rank != null && (
             <span
               className="text-[12px] font-bold px-3 py-1.5 rounded-full"
-              style={{ background: 'rgba(240,180,41,0.12)', border: '1px solid rgba(240,180,41,0.25)', color: '#F0B429' }}
+              style={{ background: 'var(--c-gold-bg)', border: '1px solid var(--c-gold-bd)', color: 'var(--c-gold)' }}
             >
               Rank #{rank}
             </span>
@@ -98,7 +100,7 @@ export default function Profile() {
           {user.isAdmin && (
             <span
               className="text-[12px] font-bold px-3 py-1.5 rounded-full"
-              style={{ background: 'rgba(91,108,248,0.12)', border: '1px solid rgba(91,108,248,0.25)', color: '#8B9CFF' }}
+              style={{ background: 'var(--c-primary-bg)', border: '1px solid var(--c-primary-bd)', color: 'var(--c-primary)' }}
             >
               Admin
             </span>
@@ -112,10 +114,14 @@ export default function Profile() {
           <div
             key={s.label}
             className="rounded-2xl p-4 text-center"
-            style={{ background: '#0D0D1A', border: '1px solid rgba(255,255,255,0.07)' }}
+            style={{
+              background: 'var(--c-card)',
+              border: '1px solid var(--c-border)',
+              transition: 'background 0.2s, border-color 0.2s',
+            }}
           >
             <div className="text-[24px] font-bold" style={{ color: s.color }}>{s.value}</div>
-            <div className="text-[11px] mt-0.5 uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.3)' }}>
+            <div className="text-[11px] mt-0.5 uppercase tracking-wide" style={{ color: 'var(--c-t3)' }}>
               {s.label}
             </div>
           </div>
@@ -127,10 +133,14 @@ export default function Profile() {
         <Link
           to="/admin"
           className="flex items-center justify-between w-full rounded-2xl px-5 py-4 transition-opacity hover:opacity-80"
-          style={{ background: 'rgba(240,180,41,0.08)', border: '1px solid rgba(240,180,41,0.18)' }}
+          style={{
+            background: 'var(--c-gold-bg)',
+            border: '1px solid var(--c-gold-bd)',
+            transition: 'background 0.2s, border-color 0.2s',
+          }}
         >
-          <span className="text-[14px] font-semibold" style={{ color: '#F0B429' }}>⚙️ Admin Panel</span>
-          <span style={{ color: 'rgba(240,180,41,0.45)' }}>→</span>
+          <span className="text-[14px] font-semibold" style={{ color: 'var(--c-gold)' }}>⚙️ Admin Panel</span>
+          <span style={{ color: 'var(--c-gold)' }}>→</span>
         </Link>
       )}
 
@@ -138,15 +148,9 @@ export default function Profile() {
       <button
         onClick={handleLogout}
         className="w-full py-3.5 rounded-2xl text-[14px] font-semibold transition-all duration-200"
-        style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.18)', color: 'rgba(239,68,68,0.65)' }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.background = 'rgba(239,68,68,0.12)';
-          e.currentTarget.style.color = '#EF4444';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.background = 'rgba(239,68,68,0.06)';
-          e.currentTarget.style.color = 'rgba(239,68,68,0.65)';
-        }}
+        style={{ background: 'var(--c-red-bg)', border: '1px solid var(--c-red-bd)', color: 'var(--c-red)', opacity: 0.7 }}
+        onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; }}
+        onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.7'; }}
       >
         Sign Out
       </button>
