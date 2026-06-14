@@ -324,3 +324,13 @@
 [data-theme="light"] .bg-rose-900\/40   { background: rgba(255,228,230,0.5) !important; }
 [data-theme="light"] .text-rose-300     { color: #9F1239 !important; }
 [data-theme="light"] .border-rose-800   { border-color: rgba(225,29,72,0.3)   !important; }
+
+/* Native <select> dropdown options inherit CSS vars inconsistently — force explicit colors */
+select option {
+  color: #0F172A;
+  background: #FFFFFF;
+}
+[data-theme="dark"] select option {
+  color: #E8EAFF;
+  background: #1A1A2E;
+}
