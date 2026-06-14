@@ -37,7 +37,7 @@ function SmartRoot() {
     );
   }
 
-  if (!user) return <Landing />;
+  if (!user) return <Navigate to="/login" replace />;
   return <Layout><Dashboard /></Layout>;
 }
 
