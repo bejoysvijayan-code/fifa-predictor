@@ -1,0 +1,128 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    background: #07070F;
+    color: #E8EAFF;
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  * { box-sizing: border-box; }
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 99px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.18);
+  }
+}
+
+@layer components {
+  /* ── Cards ─────────────────────────────────── */
+  .card {
+    background: #0D0D1A;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5), 0 6px 20px rgba(0, 0, 0, 0.2);
+  }
+
+  .card-sm {
+    background: #0D0D1A;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 12px;
+    padding: 14px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  }
+
+  /* ── Status badges ──────────────────────────── */
+  .badge-upcoming {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(91, 108, 248, 0.12);
+    color: #8B9CFF;
+    border: 1px solid rgba(91, 108, 248, 0.22);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    padding: 3px 9px;
+    border-radius: 99px;
+  }
+
+  .badge-live {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(239, 68, 68, 0.12);
+    color: #FF7676;
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    padding: 3px 9px;
+    border-radius: 99px;
+    @apply animate-pulse;
+  }
+
+  .badge-completed {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(34, 197, 94, 0.10);
+    color: #4ADE80;
+    border: 1px solid rgba(34, 197, 94, 0.20);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    padding: 3px 9px;
+    border-radius: 99px;
+  }
+
+  /* ── Glassmorphism ──────────────────────────── */
+  .glass {
+    background: rgba(7, 7, 15, 0.82);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  /* ── Spinner ────────────────────────────────── */
+  .spinner {
+    width: 28px;
+    height: 28px;
+    border: 2.5px solid rgba(91, 108, 248, 0.2);
+    border-top-color: #5B6CF8;
+    border-radius: 50%;
+    @apply animate-spin;
+  }
+
+  /* ── Input ──────────────────────────────────── */
+  .input {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    border-radius: 12px;
+    padding: 11px 14px;
+    color: #E8EAFF;
+    font-size: 14px;
+    font-family: inherit;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .input:focus {
+    outline: none;
+    border-color: #5B6CF8;
+    box-shadow: 0 0 0 3px rgba(91, 108, 248, 0.14);
+  }
+  .input::placeholder { color: rgba(255, 255, 255, 0.22); }
+}
