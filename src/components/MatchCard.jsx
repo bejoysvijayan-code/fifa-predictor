@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { formatKickoff, getPredictionStatus, isMatchLocked } from '../utils/scoring';
 import PredictionButtonGroup from './PredictionButtonGroup';
 import CircleFlag from './CircleFlag';
@@ -11,10 +11,20 @@ const STATUS_BADGE = {
   completed: <span className="badge-completed">Done</span>,
 };
 
-export default function MatchCard({ match, userPrediction, onPredictionSaved }) {
+export default function MatchCard({ match, userPrediction, predCounts = {}, onPredictionSaved }) {
   const { user } = useAuth();
   const [saving, setSaving] = useState(false);
   const [localPrediction, setLocalPrediction] = useState(userPrediction?.prediction || null);
+  const [barsMounted, setBarsMounted] = useState(false);
+  useEffect(() => { const t = setTimeout(() => setBarsMounted(true), 80); return () => clearTimeout(t); }, []);
+
+  const homeCount = predCounts[match.homeTeam] || 0;
+  const drawCount = predCounts['Draw'] || 0;
+  const awayCount = predCounts[match.awayTeam] || 0;
+  const total = homeCount + drawCount + awayCount;
+  const homePct = total > 0 ? Math.round((homeCount / total) * 100) : 0;
+  const drawPct = total > 0 ? Math.round((drawCount / total) * 100) : 0;
+  const awayPct = total > 0 ? 100 - homePct - drawPct : 0;
 
   const locked = isMatchLocked(match.kickoffTime);
   const predStatus = match.status === 'completed'
@@ -101,6 +111,39 @@ export default function MatchCard({ match, userPrediction, onPredictionSaved }) 
           </div>
         </div>
       </div>
+
+      {/* Crowd participation */}
+      {total > 0 ? (
+        <div className="mt-4">
+          <div className="flex items-center justify-between text-[11px] mb-1.5">
+            <span className="font-semibold" style={{ color: 'var(--c-t3)' }}>Crowd Picks</span>
+            <span style={{ color: 'var(--c-t3)' }}>
+              {total.toLocaleString()} {total === 1 ? 'vote' : 'votes'}
+            </span>
+          </div>
+          <div
+            className="flex rounded-full overflow-hidden mb-1.5"
+            style={{ height: 6, background: 'var(--c-border)' }}
+          >
+            <div style={{ width: barsMounted ? `${homePct}%` : '0%', background: 'var(--c-primary)', transition: 'width 0.7s cubic-bezier(0.4,0,0.2,1)' }} />
+            <div style={{ width: barsMounted ? `${drawPct}%` : '0%', background: 'var(--c-t3)', transition: 'width 0.7s cubic-bezier(0.4,0,0.2,1) 0.05s' }} />
+            <div style={{ width: barsMounted ? `${awayPct}%` : '0%', background: 'var(--c-orange)', transition: 'width 0.7s cubic-bezier(0.4,0,0.2,1) 0.1s' }} />
+          </div>
+          <div className="flex justify-between text-[10px] font-semibold">
+            <span className="flex items-center gap-1" style={{ color: 'var(--c-primary)' }}>
+              <CircleFlag team={match.homeTeam} size={14} /> {homePct}%
+            </span>
+            <span style={{ color: 'var(--c-t3)' }}>🤝 {drawPct}%</span>
+            <span className="flex items-center gap-1" style={{ color: 'var(--c-orange)' }}>
+              {awayPct}% <CircleFlag team={match.awayTeam} size={14} />
+            </span>
+          </div>
+        </div>
+      ) : (
+        <div className="mt-3 text-[10px] text-center" style={{ color: 'var(--c-t3)' }}>
+          No predictions yet
+        </div>
+      )}
 
       {/* Prediction */}
       {user && (

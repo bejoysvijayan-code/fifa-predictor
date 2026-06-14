@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { getMatches, getUserPredictions } from '../firebase/services';
+import { getMatches, getUserPredictions, getAllPredictions } from '../firebase/services';
 import MatchCard from '../components/MatchCard';
 
 const FILTERS = [
@@ -14,16 +14,26 @@ export default function Matches() {
   const { user } = useAuth();
   const [matches, setMatches] = useState([]);
   const [predictions, setPredictions] = useState([]);
+  const [predCounts, setPredCounts] = useState({});
   const [filter, setFilter] = useState('all');
   const [loading, setLoading] = useState(true);
 
   async function load() {
-    const [allMatches, userPreds] = await Promise.all([
+    const [allMatches, userPreds, allPreds] = await Promise.all([
       getMatches(),
       getUserPredictions(user.uid),
+      getAllPredictions(),
     ]);
     setMatches(allMatches);
     setPredictions(userPreds);
+
+    const counts = {};
+    allPreds.forEach((p) => {
+      if (!counts[p.matchId]) counts[p.matchId] = {};
+      counts[p.matchId][p.prediction] = (counts[p.matchId][p.prediction] || 0) + 1;
+    });
+    setPredCounts(counts);
+
     setLoading(false);
   }
 
@@ -99,7 +109,7 @@ export default function Matches() {
       ) : (
         <div className="space-y-3">
           {filtered.map((m) => (
-            <MatchCard key={m.id} match={m} userPrediction={predMap[m.id]} onPredictionSaved={load} />
+            <MatchCard key={m.id} match={m} userPrediction={predMap[m.id]} predCounts={predCounts[m.id] || {}} onPredictionSaved={load} />
           ))}
         </div>
       )}
