@@ -57,7 +57,7 @@ export async function updateUser(uid, data) {
 // ── Matches ────────────────────────────────────────────
 
 export async function getMatches() {
-  const q = query(collection(db, 'matches'), orderBy('kickoffTime', 'asc'));
+  const q = query(collection(db, 'matches'), orderBy('matchNumber', 'asc'));
   const snap = await getDocs(q);
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }

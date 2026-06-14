@@ -301,14 +301,11 @@ function MatchBrowser({ matches, predCounts, onSignIn }) {
     completed: matches.filter((m) => m.status === 'completed').length,
   };
 
-  // Sort: live first, then upcoming by kickoff, then completed (recent first)
+  // Sort: live first, then upcoming, then completed — within each group by matchNumber
   const sorted = [...matches].sort((a, b) => {
     const order = { live: 0, upcoming: 1, completed: 2 };
     if (order[a.status] !== order[b.status]) return order[a.status] - order[b.status];
-    const aT = a.kickoffTime?.toDate ? a.kickoffTime.toDate() : new Date(a.kickoffTime || 0);
-    const bT = b.kickoffTime?.toDate ? b.kickoffTime.toDate() : new Date(b.kickoffTime || 0);
-    if (a.status === 'completed') return bT - aT; // most recent completed first
-    return aT - bT;
+    return (a.matchNumber ?? Infinity) - (b.matchNumber ?? Infinity);
   });
 
   const filtered = activeTab === 'all' ? sorted : sorted.filter((m) => m.status === activeTab);
