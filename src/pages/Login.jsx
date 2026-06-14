@@ -207,6 +207,9 @@ export default function Login() {
             Climb the Leaderboard.
           </span>
         </h1>
+        <p className="text-[15px] font-bold mb-1" style={{ color: 'var(--c-gold)' }}>
+          🏆 Win Exciting Prizes!
+        </p>
         <p className="text-[14px] mb-6" style={{ color: 'var(--c-t3)' }}>
           Browse all FIFA World Cup 2026 matches below — sign in to submit your predictions.
         </p>
