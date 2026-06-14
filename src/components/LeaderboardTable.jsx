@@ -2,10 +2,31 @@ import { sortLeaderboard } from '../utils/scoring';
 import { useAuth } from '../contexts/AuthContext';
 
 const PODIUM = [
-  { emoji: '🥇', bg: 'var(--c-gold-bg)',                     border: 'var(--c-gold-bd)',                     color: 'var(--c-gold)' },
-  { emoji: '🥈', bg: 'rgba(148,163,184,0.08)',               border: 'rgba(148,163,184,0.20)',               color: '#94A3B8' },
-  { emoji: '🥉', bg: 'rgba(180,120,70,0.08)',                border: 'rgba(180,120,70,0.20)',                color: '#CD7F32' },
+  { emoji: '🥇', bg: 'var(--c-gold-bg)',           border: 'var(--c-gold-bd)',           color: 'var(--c-gold)' },
+  { emoji: '🥈', bg: 'rgba(148,163,184,0.08)',      border: 'rgba(148,163,184,0.20)',      color: '#94A3B8' },
+  { emoji: '🥉', bg: 'rgba(180,120,70,0.08)',       border: 'rgba(180,120,70,0.20)',       color: '#CD7F32' },
 ];
+
+function TickX({ correct, wrong }) {
+  return (
+    <div className="flex items-center justify-center gap-2 mt-2">
+      <span className="flex items-center gap-0.5 text-[11px] font-bold" style={{ color: 'var(--c-green)' }}>
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+          <circle cx="6" cy="6" r="6" fill="currentColor" opacity="0.15" />
+          <path d="M3 6l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        {correct}
+      </span>
+      <span className="flex items-center gap-0.5 text-[11px] font-bold" style={{ color: 'var(--c-red)' }}>
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+          <circle cx="6" cy="6" r="6" fill="currentColor" opacity="0.15" />
+          <path d="M4 4l4 4M8 4l-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
+        {wrong}
+      </span>
+    </div>
+  );
+}
 
 export default function LeaderboardTable({ users }) {
   const { user } = useAuth();
@@ -23,15 +44,17 @@ export default function LeaderboardTable({ users }) {
   }
 
   const top3 = sorted.slice(0, Math.min(3, sorted.length));
-  const rest = sorted.slice(3);
+  const rest  = sorted.slice(3);
 
   return (
     <div className="space-y-4 animate-slide-up">
-      {/* Top 3 podium */}
+
+      {/* ── Top 3 podium boxes ── */}
       <div className="grid grid-cols-3 gap-3">
         {top3.map((u, i) => {
           const p = PODIUM[i];
           const isMe = u.uid === user?.uid;
+          const wrong = (u.totalPredictions || 0) - (u.correctPredictions || 0);
           return (
             <div
               key={u.id}
@@ -44,6 +67,7 @@ export default function LeaderboardTable({ users }) {
               }}
             >
               <div className="text-2xl mb-2">{p.emoji}</div>
+
               {u.photoURL ? (
                 <img
                   src={u.photoURL}
@@ -59,29 +83,32 @@ export default function LeaderboardTable({ users }) {
                   {u.displayName?.[0] || '?'}
                 </div>
               )}
+
               <div className="text-[12px] font-semibold truncate w-full" style={{ color: 'var(--c-t1)' }}>
                 {u.displayName?.split(' ')[0]}
                 {isMe && <span className="text-[10px] ml-1" style={{ color: 'var(--c-t3)' }}>(you)</span>}
               </div>
-              <div className="mt-2.5">
-                <div className="text-[16px] font-bold" style={{ color: p.color }}>{u.correctPredictions}</div>
-                <div className="text-[10px] uppercase tracking-wide" style={{ color: 'var(--c-t3)' }}>correct</div>
+
+              <div className="mt-2">
+                <div className="text-[16px] font-bold" style={{ color: p.color }}>{u.totalPoints} pts</div>
               </div>
-              <div className="mt-1 text-[11px] font-bold" style={{ color: p.color }}>{u.totalPoints} pts</div>
+
+              <TickX correct={u.correctPredictions || 0} wrong={wrong} />
             </div>
           );
         })}
       </div>
 
-      {/* Remaining rows */}
+      {/* ── Ranks 4 and below ── */}
       {rest.length > 0 && (
         <div
           className="rounded-2xl overflow-hidden"
           style={{ border: '1px solid var(--c-border)', transition: 'border-color 0.2s' }}
         >
           {rest.map((u, i) => {
-            const rank = i + 4;
-            const isMe = u.uid === user?.uid;
+            const rank  = i + 4;
+            const isMe  = u.uid === user?.uid;
+            const wrong = (u.totalPredictions || 0) - (u.correctPredictions || 0);
             return (
               <div
                 key={u.id}
@@ -92,12 +119,12 @@ export default function LeaderboardTable({ users }) {
                   transition: 'background 0.2s',
                 }}
               >
-                <div
-                  className="w-6 text-center text-[12px] font-bold flex-shrink-0"
-                  style={{ color: 'var(--c-t3)' }}
-                >
+                {/* Rank */}
+                <div className="w-6 text-center text-[12px] font-bold flex-shrink-0" style={{ color: 'var(--c-t3)' }}>
                   {rank}
                 </div>
+
+                {/* Avatar + name */}
                 <div className="flex items-center gap-2.5 flex-1 min-w-0">
                   {u.photoURL ? (
                     <img src={u.photoURL} alt={u.displayName} className="w-7 h-7 rounded-full flex-shrink-0" />
@@ -117,12 +144,26 @@ export default function LeaderboardTable({ users }) {
                     {isMe && <span className="text-[11px] ml-1" style={{ color: 'var(--c-t3)' }}>(you)</span>}
                   </span>
                 </div>
-                <div className="flex items-center gap-4 flex-shrink-0">
-                  <span className="text-[12px] font-semibold" style={{ color: 'var(--c-green)' }}>{u.correctPredictions}</span>
-                  <span className="text-[12px]" style={{ color: 'var(--c-t3)' }}>
-                    {u.accuracyPercentage?.toFixed(0)}%
+
+                {/* Stats: ✓ wrong pts */}
+                <div className="flex items-center gap-3 flex-shrink-0">
+                  <span className="flex items-center gap-1 text-[12px] font-bold" style={{ color: 'var(--c-green)' }}>
+                    <svg width="13" height="13" viewBox="0 0 12 12" fill="none">
+                      <circle cx="6" cy="6" r="6" fill="currentColor" opacity="0.15" />
+                      <path d="M3 6l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                    {u.correctPredictions || 0}
                   </span>
-                  <span className="text-[12px] font-bold" style={{ color: 'var(--c-gold)' }}>{u.totalPoints}pt</span>
+                  <span className="flex items-center gap-1 text-[12px] font-bold" style={{ color: 'var(--c-red)' }}>
+                    <svg width="13" height="13" viewBox="0 0 12 12" fill="none">
+                      <circle cx="6" cy="6" r="6" fill="currentColor" opacity="0.15" />
+                      <path d="M4 4l4 4M8 4l-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                    </svg>
+                    {wrong}
+                  </span>
+                  <span className="text-[12px] font-bold" style={{ color: 'var(--c-gold)' }}>
+                    {u.totalPoints}pt
+                  </span>
                 </div>
               </div>
             );
