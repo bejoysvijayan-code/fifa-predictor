@@ -287,7 +287,7 @@ export default function Login() {
       {/* Footer CTA */}
       <div className="py-10 px-4 text-center" style={{ borderTop: '1px solid var(--c-border)' }}>
         <p className="text-[13px] mb-4" style={{ color: 'var(--c-t3)' }}>
-          Join thousands of fans predicting FIFA World Cup 2026 results
+          Join your 80 Navodayan batchmates in predicting FIFA World Cup 2026 results
         </p>
         <button
           onClick={loginWithGoogle}
