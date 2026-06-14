@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { useTheme } from '../contexts/ThemeContext';
 import { getPublicData } from '../firebase/services';
-import { getFlag, sortLeaderboard } from '../utils/scoring';
+import { sortLeaderboard } from '../utils/scoring';
+import { getCountryCode } from '../utils/countryFlags';
 import PublicMatchCard from '../components/PublicMatchCard';
+import CircleFlag from '../components/CircleFlag';
 import ThemeToggle from '../components/ThemeToggle';
+
+const CDN = 'https://hatscripts.github.io/circle-flags/flags';
 
 /* ── Google Icon ──────────────────────────────────────── */
 function GoogleIcon({ size = 18 }) {
@@ -108,26 +110,41 @@ function HeroSection({ liveCount, totalUsers, onSignIn }) {
         bottom: -150, right: -80, pointerEvents: 'none',
       }} />
 
-      {/* Floating flags */}
-      {['🇧🇷', '🇦🇷', '🇫🇷', '🇩🇪', '🇪🇸', '🏴󠁧󠁢󠁥󠁮󠁧󠁿', '🇵🇹', '🇺🇸'].map((flag, i) => (
-        <div
-          key={i}
-          style={{
-            position: 'absolute',
-            fontSize: 24 + (i % 3) * 6,
-            opacity: 0.06 + (i % 4) * 0.02,
-            top: `${10 + (i * 11) % 70}%`,
-            left: i % 2 === 0 ? `${5 + (i * 7) % 20}%` : undefined,
-            right: i % 2 !== 0 ? `${5 + (i * 9) % 20}%` : undefined,
-            pointerEvents: 'none',
-            userSelect: 'none',
-            animation: `float ${4 + i * 0.7}s ease-in-out infinite alternate`,
-            animationDelay: `${i * 0.4}s`,
-          }}
-        >
-          {flag}
-        </div>
-      ))}
+      {/* Floating circle flags */}
+      {[
+        { team: 'Brazil',   code: 'br' },
+        { team: 'Argentina',code: 'ar' },
+        { team: 'France',   code: 'fr' },
+        { team: 'Germany',  code: 'de' },
+        { team: 'Spain',    code: 'es' },
+        { team: 'England',  code: 'gb-eng' },
+        { team: 'Portugal', code: 'pt' },
+        { team: 'USA',      code: 'us' },
+      ].map(({ team, code }, i) => {
+        const size = 36 + (i % 3) * 12;
+        return (
+          <img
+            key={i}
+            src={`${CDN}/${code}.svg`}
+            width={size}
+            height={size}
+            alt={team}
+            draggable={false}
+            style={{
+              position: 'absolute',
+              borderRadius: '50%',
+              opacity: 0.08 + (i % 4) * 0.025,
+              top: `${10 + (i * 11) % 70}%`,
+              left:  i % 2 === 0 ? `${5 + (i * 7) % 20}%` : undefined,
+              right: i % 2 !== 0 ? `${5 + (i * 9) % 20}%` : undefined,
+              pointerEvents: 'none',
+              userSelect: 'none',
+              animation: `float ${4 + i * 0.7}s ease-in-out infinite alternate`,
+              animationDelay: `${i * 0.4}s`,
+            }}
+          />
+        );
+      })}
 
       <div className="max-w-3xl mx-auto px-4 text-center relative">
         {/* Live badge */}

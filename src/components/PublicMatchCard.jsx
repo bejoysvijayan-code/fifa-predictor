@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getFlag, formatKickoff } from '../utils/scoring';
+import CircleFlag from './CircleFlag';
 import CountdownTimer from './CountdownTimer';
 
 function GoogleIcon({ size = 16 }) {
@@ -121,8 +122,8 @@ export default function PublicMatchCard({ match, predCounts = {}, onSignIn, feat
       {/* Teams + Score */}
       <div className="flex items-center justify-between gap-3 mb-3">
         {/* Home team */}
-        <div className="flex-1 flex flex-col items-center text-center gap-1">
-          <span style={{ fontSize: 36, lineHeight: 1 }}>{getFlag(homeTeam)}</span>
+        <div className="flex-1 flex flex-col items-center text-center gap-1.5">
+          <CircleFlag team={homeTeam} size={52} />
           <span className="text-sm font-bold leading-tight" style={{ color: 'var(--c-t1)' }}>
             {homeTeam}
           </span>
@@ -176,8 +177,8 @@ export default function PublicMatchCard({ match, predCounts = {}, onSignIn, feat
         </div>
 
         {/* Away team */}
-        <div className="flex-1 flex flex-col items-center text-center gap-1">
-          <span style={{ fontSize: 36, lineHeight: 1 }}>{getFlag(awayTeam)}</span>
+        <div className="flex-1 flex flex-col items-center text-center gap-1.5">
+          <CircleFlag team={awayTeam} size={52} />
           <span className="text-sm font-bold leading-tight" style={{ color: 'var(--c-t1)' }}>
             {awayTeam}
           </span>
@@ -238,13 +239,13 @@ export default function PublicMatchCard({ match, predCounts = {}, onSignIn, feat
           </div>
 
           {/* Percentage labels */}
-          <div className="flex justify-between text-xs font-semibold">
-            <span style={{ color: 'var(--c-primary)' }}>
-              {getFlag(homeTeam)} {homePct}%
+          <div className="flex justify-between text-xs font-semibold items-center">
+            <span className="flex items-center gap-1" style={{ color: 'var(--c-primary)' }}>
+              <CircleFlag team={homeTeam} size={16} /> {homePct}%
             </span>
             <span style={{ color: 'var(--c-t3)' }}>🤝 {drawPct}%</span>
-            <span style={{ color: 'var(--c-orange)' }}>
-              {awayPct}% {getFlag(awayTeam)}
+            <span className="flex items-center gap-1" style={{ color: 'var(--c-orange)' }}>
+              {awayPct}% <CircleFlag team={awayTeam} size={16} />
             </span>
           </div>
         </div>

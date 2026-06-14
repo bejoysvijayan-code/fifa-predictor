@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { formatKickoff, getFlag, getPredictionStatus, isMatchLocked } from '../utils/scoring';
+import { formatKickoff, getPredictionStatus, isMatchLocked } from '../utils/scoring';
 import PredictionButtonGroup from './PredictionButtonGroup';
+import CircleFlag from './CircleFlag';
 import { savePrediction } from '../firebase/services';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -65,8 +66,8 @@ export default function MatchCard({ match, userPrediction, onPredictionSaved }) 
 
       {/* Teams */}
       <div className="flex items-center justify-between gap-3">
-        <div className="flex-1 text-center">
-          <div className="text-4xl mb-2">{getFlag(match.homeTeam)}</div>
+        <div className="flex-1 text-center flex flex-col items-center">
+          <CircleFlag team={match.homeTeam} size={52} className="mb-2" />
           <div className="text-[13px] font-semibold leading-tight" style={{ color: 'var(--c-t1)' }}>
             {match.homeTeam}
           </div>
@@ -75,10 +76,16 @@ export default function MatchCard({ match, userPrediction, onPredictionSaved }) 
         <div className="flex-shrink-0 text-center px-1 min-w-[64px]">
           {match.status === 'completed' && match.result ? (
             <>
-              <div className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--c-t3)' }}>
-                Winner
-              </div>
-              <div className="text-[13px] font-bold" style={{ color: 'var(--c-gold)' }}>
+              {match.result.homeScore != null && match.result.awayScore != null ? (
+                <div className="text-[22px] font-black leading-none mb-1" style={{ color: 'var(--c-t1)' }}>
+                  {match.result.homeScore}–{match.result.awayScore}
+                </div>
+              ) : (
+                <div className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--c-t3)' }}>
+                  FT
+                </div>
+              )}
+              <div className="text-[11px] font-bold" style={{ color: 'var(--c-gold)' }}>
                 {match.result.winner === 'Draw' ? '🤝 Draw' : match.result.winner}
               </div>
             </>
@@ -87,8 +94,8 @@ export default function MatchCard({ match, userPrediction, onPredictionSaved }) 
           )}
         </div>
 
-        <div className="flex-1 text-center">
-          <div className="text-4xl mb-2">{getFlag(match.awayTeam)}</div>
+        <div className="flex-1 text-center flex flex-col items-center">
+          <CircleFlag team={match.awayTeam} size={52} className="mb-2" />
           <div className="text-[13px] font-semibold leading-tight" style={{ color: 'var(--c-t1)' }}>
             {match.awayTeam}
           </div>
