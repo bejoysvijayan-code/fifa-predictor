@@ -128,13 +128,19 @@ export default function ImportMatch() {
 
   function parseDateTime(raw) {
     if (!raw) return '';
-    // Handle DD/MM/YYYY HH:MM and DD-MM-YYYY HH:MM (common in WhatsApp exports)
-    const dmyMatch = raw.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})[\s,T](\d{1,2}):(\d{2})/);
+    // Handle DD/MM/YYYY HH:MM [AM/PM] and DD-MM-YYYY HH:MM [AM/PM]
+    const dmyMatch = raw.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})[\s,T](\d{1,2}):(\d{2})(?:\s*(AM|PM))?/i);
     if (dmyMatch) {
-      const [, d, m, y, h, min] = dmyMatch;
-      return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}T${h.padStart(2,'0')}:${min}`;
+      const [, d, m, y, rawH, min, ampm] = dmyMatch;
+      let h = parseInt(rawH, 10);
+      if (ampm) {
+        const upper = ampm.toUpperCase();
+        if (upper === 'AM' && h === 12) h = 0;
+        if (upper === 'PM' && h !== 12) h += 12;
+      }
+      return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}T${String(h).padStart(2,'0')}:${min}`;
     }
-    // Try native parse for ISO / standard formats
+    // Try native parse for ISO / standard formats (handles AM/PM natively)
     const parsed = new Date(raw);
     if (!isNaN(parsed)) {
       const pad = (n) => String(n).padStart(2, '0');
@@ -308,7 +314,7 @@ export default function ImportMatch() {
                 📄 Import from CSV
               </p>
               <p className="text-[11px] mb-2" style={{ color: 'var(--c-t3)' }}>
-                CSV format: <code style={{ background: 'var(--c-border)', padding: '1px 4px', borderRadius: 3 }}>name,prediction,time</code> — time is optional. Accepts <code style={{ background: 'var(--c-border)', padding: '1px 4px', borderRadius: 3 }}>DD/MM/YYYY HH:MM</code> or <code style={{ background: 'var(--c-border)', padding: '1px 4px', borderRadius: 3 }}>YYYY-MM-DD HH:MM</code>.
+                CSV format: <code style={{ background: 'var(--c-border)', padding: '1px 4px', borderRadius: 3 }}>name,prediction,time</code> — time is optional. Accepts 24-hour (<code style={{ background: 'var(--c-border)', padding: '1px 4px', borderRadius: 3 }}>13/06/2026 14:30</code>) or 12-hour (<code style={{ background: 'var(--c-border)', padding: '1px 4px', borderRadius: 3 }}>13/06/2026 2:30 PM</code>).
               </p>
               <div className="flex gap-2 mb-2">
                 <label
