@@ -126,6 +126,23 @@ export default function ImportMatch() {
 
   function flash(m) { setMsg(m); setTimeout(() => setMsg(null), 6000); }
 
+  function parseDateTime(raw) {
+    if (!raw) return '';
+    // Handle DD/MM/YYYY HH:MM and DD-MM-YYYY HH:MM (common in WhatsApp exports)
+    const dmyMatch = raw.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})[\s,T](\d{1,2}):(\d{2})/);
+    if (dmyMatch) {
+      const [, d, m, y, h, min] = dmyMatch;
+      return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}T${h.padStart(2,'0')}:${min}`;
+    }
+    // Try native parse for ISO / standard formats
+    const parsed = new Date(raw);
+    if (!isNaN(parsed)) {
+      const pad = (n) => String(n).padStart(2, '0');
+      return `${parsed.getFullYear()}-${pad(parsed.getMonth()+1)}-${pad(parsed.getDate())}T${pad(parsed.getHours())}:${pad(parsed.getMinutes())}`;
+    }
+    return '';
+  }
+
   function handleCSVImport(text) {
     const lines = text.trim().split('\n').map((l) => l.trim()).filter(Boolean);
     if (!lines.length) return;
@@ -138,19 +155,20 @@ export default function ImportMatch() {
     const newList = [...participants];
 
     rows.forEach((line) => {
-      const [rawName, rawPred] = line.split(/[,\t]/).map((s) => s.trim().replace(/^"|"$/g, ''));
+      const cols = line.split(/[,\t]/).map((s) => s.trim().replace(/^"|"$/g, ''));
+      const [rawName, rawPred, rawTime] = cols;
       if (!rawName) return;
-      const name = rawName;
-      const prediction = rawPred;
 
-      if (newList.find((p) => p.name.toLowerCase() === name.toLowerCase())) {
+      if (newList.find((p) => p.name.toLowerCase() === rawName.toLowerCase())) {
         skipped++; return;
       }
-      if (predictionOptions.length && !predictionOptions.includes(prediction)) {
+      if (predictionOptions.length && !predictionOptions.includes(rawPred)) {
         invalid++; return;
       }
+      const predictionTime = parseDateTime(rawTime);
       const kickoff = form.kickoffTime ? new Date(form.kickoffTime) : null;
-      newList.push({ name, prediction, predictionTime: '', lateEntry: false, kickoff });
+      const lateEntry = !!(kickoff && predictionTime && new Date(predictionTime) >= kickoff);
+      newList.push({ name: rawName, prediction: rawPred, predictionTime, lateEntry });
       added++;
     });
 
@@ -290,7 +308,7 @@ export default function ImportMatch() {
                 📄 Import from CSV
               </p>
               <p className="text-[11px] mb-2" style={{ color: 'var(--c-t3)' }}>
-                CSV format: <code style={{ background: 'var(--c-border)', padding: '1px 4px', borderRadius: 3 }}>name,prediction</code> — one row per person, header row optional.
+                CSV format: <code style={{ background: 'var(--c-border)', padding: '1px 4px', borderRadius: 3 }}>name,prediction,time</code> — time is optional. Accepts <code style={{ background: 'var(--c-border)', padding: '1px 4px', borderRadius: 3 }}>DD/MM/YYYY HH:MM</code> or <code style={{ background: 'var(--c-border)', padding: '1px 4px', borderRadius: 3 }}>YYYY-MM-DD HH:MM</code>.
               </p>
               <div className="flex gap-2 mb-2">
                 <label
@@ -303,7 +321,7 @@ export default function ImportMatch() {
               </div>
               <textarea
                 rows={4}
-                placeholder={'Rajesh,Brazil\nSuresh,Argentina\nPriya,Draw'}
+                placeholder={'Rajesh,Brazil,13/06/2026 10:30\nSuresh,Argentina,13/06/2026 11:45\nPriya,Draw'}
                 onPaste={(e) => { e.preventDefault(); handleCSVImport(e.clipboardData.getData('text')); }}
                 style={{ ...inpStyle, fontSize: 12, resize: 'vertical', fontFamily: 'monospace' }}
               />
