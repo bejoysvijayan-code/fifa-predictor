@@ -321,7 +321,7 @@ export default function ImportMatch() {
               </div>
               <textarea
                 rows={4}
-                placeholder={'Rajesh,Brazil,13/06/2026 10:30\nSuresh,Argentina,13/06/2026 11:45\nPriya,Draw'}
+                placeholder={'name,prediction,time\nRajesh,Brazil,13/06/2026 10:30\nSuresh,Argentina,13/06/2026 11:45\nPriya,Draw,13/06/2026 09:15\nRavi,Brazil'}
                 onPaste={(e) => { e.preventDefault(); handleCSVImport(e.clipboardData.getData('text')); }}
                 style={{ ...inpStyle, fontSize: 12, resize: 'vertical', fontFamily: 'monospace' }}
               />
