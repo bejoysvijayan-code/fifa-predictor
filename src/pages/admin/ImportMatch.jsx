@@ -126,6 +126,51 @@ export default function ImportMatch() {
 
   function flash(m) { setMsg(m); setTimeout(() => setMsg(null), 6000); }
 
+  function handleCSVImport(text) {
+    const lines = text.trim().split('\n').map((l) => l.trim()).filter(Boolean);
+    if (!lines.length) return;
+
+    // Skip header row if it looks like one
+    const start = /^name[,\t]/i.test(lines[0]) ? 1 : 0;
+    const rows = lines.slice(start);
+
+    let added = 0, skipped = 0, invalid = 0;
+    const newList = [...participants];
+
+    rows.forEach((line) => {
+      const [rawName, rawPred] = line.split(/[,\t]/).map((s) => s.trim().replace(/^"|"$/g, ''));
+      if (!rawName) return;
+      const name = rawName;
+      const prediction = rawPred;
+
+      if (newList.find((p) => p.name.toLowerCase() === name.toLowerCase())) {
+        skipped++; return;
+      }
+      if (predictionOptions.length && !predictionOptions.includes(prediction)) {
+        invalid++; return;
+      }
+      const kickoff = form.kickoffTime ? new Date(form.kickoffTime) : null;
+      newList.push({ name, prediction, predictionTime: '', lateEntry: false, kickoff });
+      added++;
+    });
+
+    setParticipants(newList);
+    const parts = [];
+    if (added)   parts.push(`${added} added`);
+    if (skipped) parts.push(`${skipped} duplicate${skipped > 1 ? 's' : ''} skipped`);
+    if (invalid) parts.push(`${invalid} invalid prediction${invalid > 1 ? 's' : ''} skipped`);
+    flash({ text: `CSV: ${parts.join(', ')}.`, error: invalid > 0 && added === 0 });
+  }
+
+  function onCSVFile(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => handleCSVImport(ev.target.result);
+    reader.readAsText(file);
+    e.target.value = '';
+  }
+
   const predictionOptions = form.homeTeam && form.awayTeam
     ? [form.homeTeam.trim(), 'Draw', form.awayTeam.trim()]
     : [];
@@ -237,6 +282,34 @@ export default function ImportMatch() {
                   ⚠️ {lateCount} after kickoff
                 </span>
               )}
+            </div>
+
+            {/* CSV import */}
+            <div className="rounded-xl p-3 mb-4" style={{ background: 'var(--c-surface)', border: '1px dashed var(--c-border-s)' }}>
+              <p className="text-xs font-semibold mb-2" style={{ color: 'var(--c-t2)' }}>
+                📄 Import from CSV
+              </p>
+              <p className="text-[11px] mb-2" style={{ color: 'var(--c-t3)' }}>
+                CSV format: <code style={{ background: 'var(--c-border)', padding: '1px 4px', borderRadius: 3 }}>name,prediction</code> — one row per person, header row optional.
+              </p>
+              <div className="flex gap-2 mb-2">
+                <label
+                  className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-semibold cursor-pointer transition-colors"
+                  style={{ background: 'var(--c-primary-bg)', border: '1px solid var(--c-primary-bd)', color: 'var(--c-primary)' }}
+                >
+                  ⬆ Upload .csv file
+                  <input type="file" accept=".csv,.txt" onChange={onCSVFile} className="hidden" />
+                </label>
+              </div>
+              <textarea
+                rows={4}
+                placeholder={'Rajesh,Brazil\nSuresh,Argentina\nPriya,Draw'}
+                onPaste={(e) => { e.preventDefault(); handleCSVImport(e.clipboardData.getData('text')); }}
+                style={{ ...inpStyle, fontSize: 12, resize: 'vertical', fontFamily: 'monospace' }}
+              />
+              <p className="text-[10px] mt-1" style={{ color: 'var(--c-t3)' }}>
+                Paste CSV text above — it imports automatically on paste.
+              </p>
             </div>
 
             {/* Add row */}
