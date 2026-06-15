@@ -68,18 +68,18 @@ export default function ImportMatch() {
     setNewName(''); setNewPrediction(''); setNewPredTime('');
   }
 
-  function removeParticipant(name) {
-    setParticipants((prev) => prev.filter((p) => p.name !== name));
+  function removeParticipant(idx) {
+    setParticipants((prev) => prev.filter((_, i) => i !== idx));
   }
 
-  function updateParticipant(name, field, value) {
+  function updateParticipant(idx, field, value) {
     setParticipants((prev) =>
-      prev.map((p) => {
-        if (p.name !== name) return p;
+      prev.map((p, i) => {
+        if (i !== idx) return p;
         const updated = { ...p, [field]: value };
         if (field === 'predictionTime') {
           const kickoff = form.kickoffTime ? new Date(form.kickoffTime) : null;
-          updated.lateEntry = kickoff && new Date(value) >= kickoff;
+          updated.lateEntry = !!(kickoff && value && new Date(value) >= kickoff);
         }
         return updated;
       })
@@ -370,8 +370,8 @@ export default function ImportMatch() {
               <p className="text-xs text-center py-3" style={{ color: 'var(--c-t3)' }}>No participants added yet</p>
             ) : (
               <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-                {participants.map((p) => (
-                  <div key={p.name} className="rounded-lg px-3 py-2"
+                {participants.map((p, idx) => (
+                  <div key={idx} className="rounded-lg px-3 py-2"
                     style={{
                       background: p.lateEntry ? 'var(--c-orange-bg)' : 'var(--c-surface)',
                       border: `1px solid ${p.lateEntry ? 'var(--c-orange-bd)' : 'var(--c-border)'}`,
@@ -379,15 +379,19 @@ export default function ImportMatch() {
                   >
                     <div className="flex items-center gap-2 mb-1.5">
                       <div className="w-6 h-6 rounded-full bg-fifa-blue flex items-center justify-center text-xs font-bold flex-shrink-0 text-white">
-                        {p.name[0].toUpperCase()}
+                        {p.name?.[0]?.toUpperCase() || '?'}
                       </div>
-                      <span className="flex-1 text-sm font-medium truncate" style={{ color: 'var(--c-t1)' }}>{p.name}</span>
-                      {p.lateEntry && <span className="text-xs" style={{ color: 'var(--c-orange)' }}>⚠️ Late</span>}
-                      <button type="button" onClick={() => removeParticipant(p.name)}
-                        className="text-xl leading-none" style={{ color: 'var(--c-t3)' }}>×</button>
+                      <input
+                        value={p.name}
+                        onChange={(e) => updateParticipant(idx, 'name', e.target.value)}
+                        style={{ ...inpStyle, flex: 1, padding: '3px 8px', fontSize: 13, fontWeight: 500 }}
+                      />
+                      {p.lateEntry && <span className="text-xs flex-shrink-0" style={{ color: 'var(--c-orange)' }}>⚠️ Late</span>}
+                      <button type="button" onClick={() => removeParticipant(idx)}
+                        className="text-xl leading-none flex-shrink-0" style={{ color: 'var(--c-t3)' }}>×</button>
                     </div>
                     <div className="flex gap-2 ml-8">
-                      <select value={p.prediction} onChange={(e) => updateParticipant(p.name, 'prediction', e.target.value)}
+                      <select value={p.prediction} onChange={(e) => updateParticipant(idx, 'prediction', e.target.value)}
                         style={{ ...inpStyle, width: 'auto', padding: '4px 8px', fontSize: 12 }}
                       >
                         {predictionOptions.map((opt) => (
@@ -395,7 +399,7 @@ export default function ImportMatch() {
                         ))}
                       </select>
                       <input type="datetime-local" value={p.predictionTime}
-                        onChange={(e) => updateParticipant(p.name, 'predictionTime', e.target.value)}
+                        onChange={(e) => updateParticipant(idx, 'predictionTime', e.target.value)}
                         style={{ ...inpStyle, flex: 1, width: 'auto', padding: '4px 8px', fontSize: 12 }}
                       />
                     </div>
