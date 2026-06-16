@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useGroup } from '../contexts/GroupContext';
-import { getMatches, getUserPredictions, getAllPredictions, getGroupMembers } from '../firebase/services';
+import { getMatches, getUserPredictions, getAllPredictions } from '../firebase/services';
 import { formatKickoff, getFlag, getPredictionStatus } from '../utils/scoring';
 
 const FILTERS = ['all', 'correct', 'incorrect', 'pending'];
@@ -21,21 +21,11 @@ export default function MyPredictions() {
 
   useEffect(() => {
     async function load() {
-      const [allMatches, userPreds, allPreds, groupMembers] = await Promise.all([
+      const [allMatches, userPreds, allPreds] = await Promise.all([
         getMatches(),
         getUserPredictions(user.uid),
         getAllPredictions(),
-        activeGroupId ? getGroupMembers(activeGroupId) : Promise.resolve([]),
       ]);
-
-      // Pre-compute which matches have a group member prediction
-      const groupMemberIds = new Set(groupMembers.map((u) => u.uid || u.id));
-      const matchHasGroupPred = {};
-      if (activeGroupId) {
-        allPreds.forEach((p) => {
-          if (groupMemberIds.has(p.userId)) matchHasGroupPred[p.matchId] = true;
-        });
-      }
 
       const predMap = {};
       userPreds.forEach((p) => { predMap[p.matchId] = p; });
@@ -46,7 +36,7 @@ export default function MyPredictions() {
           if (!activeGroupId) return !!user?.isAdmin;
           if (m.groupIds?.length > 0) return m.groupIds.includes(activeGroupId);
           if (m.status !== 'completed') return true;
-          return !!matchHasGroupPred[m.id];
+          return false;
         })
         .map((m) => ({
           match: m,

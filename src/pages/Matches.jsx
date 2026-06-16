@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useGroup } from '../contexts/GroupContext';
-import { getMatches, getUserPredictions, getAllPredictions, getGroupMembers } from '../firebase/services';
+import { getMatches, getUserPredictions, getAllPredictions } from '../firebase/services';
 import MatchCard from '../components/MatchCard';
 
 const FILTERS = [
@@ -15,25 +15,20 @@ export default function Matches() {
   const { user } = useAuth();
   const { activeGroupId } = useGroup();
   const [matches, setMatches] = useState([]);
-  const [allPreds, setAllPreds] = useState([]);
   const [predictions, setPredictions] = useState([]);
   const [predCounts, setPredCounts] = useState({});
-  const [groupMemberIds, setGroupMemberIds] = useState(new Set());
   const [filter, setFilter] = useState('all');
   const [loading, setLoading] = useState(true);
 
   async function load() {
-    const [allMatches, userPreds, allPredsData, groupMembers] = await Promise.all([
+    const [allMatches, userPreds, allPredsData] = await Promise.all([
       getMatches(),
       getUserPredictions(user.uid),
       getAllPredictions(),
-      activeGroupId ? getGroupMembers(activeGroupId) : Promise.resolve([]),
     ]);
 
     setMatches(allMatches);
     setPredictions(userPreds);
-    setAllPreds(allPredsData);
-    setGroupMemberIds(new Set(groupMembers.map((u) => u.uid || u.id)));
 
     const counts = {};
     allPredsData.forEach((p) => {
@@ -50,24 +45,16 @@ export default function Matches() {
   const predMap = {};
   predictions.forEach((p) => { predMap[p.matchId] = p; });
 
-  // Pre-compute: which matches have at least one prediction from a group member
-  const matchHasGroupPred = {};
-  if (activeGroupId) {
-    allPreds.forEach((p) => {
-      if (groupMemberIds.has(p.userId)) matchHasGroupPred[p.matchId] = true;
-    });
-  }
-
   // Group-scoped match list:
   // - no active group (non-admin): show nothing
-  // - tagged matches: only show in their group
-  // - untagged upcoming/live: global (show to all active users)
-  // - untagged completed: prediction-based group check
+  // - tagged matches: only shown in their group
+  // - untagged upcoming/live: global (cross-group polls)
+  // - untagged completed: hidden — admin must tag them via Admin → Matches
   const groupMatches = matches.filter((m) => {
-    if (!activeGroupId) return !!user?.isAdmin; // non-admin with no group sees nothing
+    if (!activeGroupId) return !!user?.isAdmin;
     if (m.groupIds?.length > 0) return m.groupIds.includes(activeGroupId);
     if (m.status !== 'completed') return true;
-    return !!matchHasGroupPred[m.id];
+    return false;
   });
 
   const counts = {
