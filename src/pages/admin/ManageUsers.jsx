@@ -160,12 +160,18 @@ export default function ManageUsers() {
 
   async function handleMerge(sourceUid, targetUid) {
     setMerging(sourceUid);
-    await mergeUsers(sourceUid, targetUid);
-    setMergeTarget(null);
-    setMergeSearch('');
-    setExpandedUid(null);
-    await load();
-    setMerging(null);
+    try {
+      await mergeUsers(sourceUid, targetUid);
+      setMergeTarget(null);
+      setMergeSearch('');
+      setMergeUid(null);
+      setExpandedUid(null);
+      await load();
+    } catch (err) {
+      alert('Merge failed: ' + err.message);
+    } finally {
+      setMerging(null);
+    }
   }
 
   async function toggleGroup(uid, groupId, isCurrentlyIn) {
