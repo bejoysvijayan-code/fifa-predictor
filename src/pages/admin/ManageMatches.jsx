@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getMatches, createMatch, updateMatch, deleteMatch } from '../../firebase/services';
+import { getMatches, createMatch, updateMatch, deleteMatch, getGroups } from '../../firebase/services';
 import { Timestamp } from 'firebase/firestore';
 import { formatKickoff, getFlag } from '../../utils/scoring';
 
@@ -7,6 +7,7 @@ const STATUS_OPTIONS = ['upcoming', 'live', 'completed'];
 
 export default function ManageMatches() {
   const [matches, setMatches] = useState([]);
+  const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ matchNumber: '', homeTeam: '', awayTeam: '', kickoffTime: '' });
   const [saving, setSaving] = useState(false);
@@ -17,8 +18,9 @@ export default function ManageMatches() {
   const [savingNum, setSavingNum] = useState(null);
 
   async function load() {
-    const data = await getMatches();
+    const [data, groupData] = await Promise.all([getMatches(), getGroups()]);
     setMatches(data);
+    setGroups(groupData);
     setLoading(false);
   }
 
@@ -50,7 +52,13 @@ export default function ManageMatches() {
 
   async function handleStatusChange(matchId, status) {
     await updateMatch(matchId, { status });
-    await load();
+    setMatches((prev) => prev.map((m) => m.id === matchId ? { ...m, status } : m));
+  }
+
+  async function handleGroupChange(matchId, groupId) {
+    const groupIds = groupId ? [groupId] : [];
+    await updateMatch(matchId, { groupIds });
+    setMatches((prev) => prev.map((m) => m.id === matchId ? { ...m, groupIds } : m));
   }
 
   async function handleSaveNum(matchId) {
@@ -86,6 +94,9 @@ export default function ManageMatches() {
     if (seen.has(key)) duplicateKeys.add(key);
     seen.add(key);
   });
+
+  // Count untagged completed matches
+  const untagged = matches.filter((m) => m.status === 'completed' && !(m.groupIds?.length));
 
   const inputClass = "w-full rounded-lg px-3 py-2 text-sm focus:outline-none";
   const inputStyle = {
@@ -146,12 +157,18 @@ export default function ManageMatches() {
         </form>
       </div>
 
+      {/* Untagged warning */}
+      {untagged.length > 0 && (
+        <div className="rounded-xl px-4 py-3 text-sm"
+          style={{ background: 'var(--c-orange-bg)', border: '1px solid var(--c-orange-bd)', color: 'var(--c-orange)' }}>
+          ⚠️ {untagged.length} completed match{untagged.length > 1 ? 'es have' : ' has'} no group assigned — use the group dropdown below to tag them.
+        </div>
+      )}
+
       {/* Duplicates warning */}
       {duplicateKeys.size > 0 && (
-        <div
-          className="rounded-xl px-4 py-3 text-sm"
-          style={{ background: 'var(--c-orange-bg)', border: '1px solid var(--c-orange-bd)', color: 'var(--c-orange)' }}
-        >
+        <div className="rounded-xl px-4 py-3 text-sm"
+          style={{ background: 'var(--c-orange-bg)', border: '1px solid var(--c-orange-bd)', color: 'var(--c-orange)' }}>
           ⚠️ {duplicateKeys.size} duplicate match{duplicateKeys.size > 1 ? 'es' : ''} detected — delete the extra one below.
         </div>
       )}
@@ -168,110 +185,117 @@ export default function ManageMatches() {
               const isConfirming = confirmDelete === m.id;
               const isDeleting = deleting === m.id;
               const isEditingNum = editingNum?.id === m.id;
+              const currentGroupId = m.groupIds?.[0] || '';
+              const isUntagged = m.status === 'completed' && !currentGroupId;
 
               return (
-                <div
-                  key={m.id}
-                  className="card flex items-center justify-between gap-3"
-                  style={isDuplicate ? {
-                    borderColor: 'var(--c-orange-bd)',
-                    background: 'var(--c-orange-bg)',
-                  } : {}}
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-sm flex items-center gap-1.5 flex-wrap" style={{ color: 'var(--c-t1)' }}>
-                      {isEditingNum ? (
-                        <span className="flex items-center gap-1">
-                          <span style={{ color: 'var(--c-gold)' }}>#</span>
-                          <input
-                            type="number" min="1"
-                            value={editingNum.value}
-                            onChange={(e) => setEditingNum({ id: m.id, value: e.target.value })}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') handleSaveNum(m.id);
-                              if (e.key === 'Escape') setEditingNum(null);
-                            }}
-                            autoFocus
-                            className="w-16 rounded px-1.5 py-0.5 text-sm focus:outline-none"
-                            style={{
-                              background: 'var(--c-inp)', border: '1px solid var(--c-primary)',
-                              color: 'var(--c-gold)',
-                            }}
-                          />
-                          <button onClick={() => handleSaveNum(m.id)} disabled={savingNum === m.id}
-                            className="text-xs px-1.5 py-0.5 bg-blue-700 text-white rounded disabled:opacity-50">
-                            {savingNum === m.id ? '…' : '✓'}
-                          </button>
-                          <button onClick={() => setEditingNum(null)}
-                            className="text-xs px-1.5 py-0.5 rounded"
-                            style={{ background: 'var(--c-surface)', color: 'var(--c-t2)' }}>
-                            ✕
-                          </button>
-                        </span>
-                      ) : (
-                        <button
-                          onClick={() => setEditingNum({ id: m.id, value: String(m.matchNumber ?? '') })}
-                          className="flex items-center gap-1 group"
-                          title="Click to edit match number"
-                        >
-                          <span style={{ color: 'var(--c-gold)' }}>
-                            {m.matchNumber != null ? `#${m.matchNumber}` : '#—'}
+                <div key={m.id} className="card"
+                  style={isDuplicate ? { borderColor: 'var(--c-orange-bd)', background: 'var(--c-orange-bg)' } : {}}>
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-sm flex items-center gap-1.5 flex-wrap" style={{ color: 'var(--c-t1)' }}>
+                        {isEditingNum ? (
+                          <span className="flex items-center gap-1">
+                            <span style={{ color: 'var(--c-gold)' }}>#</span>
+                            <input
+                              type="number" min="1"
+                              value={editingNum.value}
+                              onChange={(e) => setEditingNum({ id: m.id, value: e.target.value })}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleSaveNum(m.id);
+                                if (e.key === 'Escape') setEditingNum(null);
+                              }}
+                              autoFocus
+                              className="w-16 rounded px-1.5 py-0.5 text-sm focus:outline-none"
+                              style={{ background: 'var(--c-inp)', border: '1px solid var(--c-primary)', color: 'var(--c-gold)' }}
+                            />
+                            <button onClick={() => handleSaveNum(m.id)} disabled={savingNum === m.id}
+                              className="text-xs px-1.5 py-0.5 bg-blue-700 text-white rounded disabled:opacity-50">
+                              {savingNum === m.id ? '…' : '✓'}
+                            </button>
+                            <button onClick={() => setEditingNum(null)}
+                              className="text-xs px-1.5 py-0.5 rounded"
+                              style={{ background: 'var(--c-surface)', color: 'var(--c-t2)' }}>
+                              ✕
+                            </button>
                           </span>
-                          <span className="text-xs" style={{ color: 'var(--c-t3)' }}>✏️</span>
+                        ) : (
+                          <button
+                            onClick={() => setEditingNum({ id: m.id, value: String(m.matchNumber ?? '') })}
+                            className="flex items-center gap-1 group"
+                            title="Click to edit match number"
+                          >
+                            <span style={{ color: 'var(--c-gold)' }}>
+                              {m.matchNumber != null ? `#${m.matchNumber}` : '#—'}
+                            </span>
+                            <span className="text-xs" style={{ color: 'var(--c-t3)' }}>✏️</span>
+                          </button>
+                        )}
+                        {getFlag(m.homeTeam)} {m.homeTeam} vs {getFlag(m.awayTeam)} {m.awayTeam}
+                        {isDuplicate && (
+                          <span className="text-xs font-medium" style={{ color: 'var(--c-orange)' }}>⚠️ duplicate</span>
+                        )}
+                      </div>
+                      <div className="text-xs mt-0.5" style={{ color: 'var(--c-t2)' }}>{formatKickoff(m.kickoffTime)}</div>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {/* Group tag */}
+                      <select
+                        value={currentGroupId}
+                        onChange={(e) => handleGroupChange(m.id, e.target.value)}
+                        className="rounded-lg px-2 py-1.5 text-xs focus:outline-none"
+                        style={{
+                          background: isUntagged ? 'var(--c-orange-bg)' : 'var(--c-inp)',
+                          border: `1px solid ${isUntagged ? 'var(--c-orange-bd)' : 'var(--c-inp-bd)'}`,
+                          color: isUntagged ? 'var(--c-orange)' : 'var(--c-inp-t)',
+                          maxWidth: '110px',
+                        }}
+                        title="Assign to group"
+                      >
+                        <option value="">No group</option>
+                        {groups.map((g) => (
+                          <option key={g.id} value={g.id}>{g.name}</option>
+                        ))}
+                      </select>
+
+                      {/* Status */}
+                      <select
+                        value={m.status}
+                        onChange={(e) => handleStatusChange(m.id, e.target.value)}
+                        className="rounded-lg px-2 py-1.5 text-sm focus:outline-none"
+                        style={{ background: 'var(--c-inp)', border: '1px solid var(--c-inp-bd)', color: 'var(--c-inp-t)' }}
+                      >
+                        {STATUS_OPTIONS.map((s) => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </select>
+
+                      {/* Delete */}
+                      {isConfirming ? (
+                        <div className="flex gap-1">
+                          <button onClick={() => handleDelete(m.id)} disabled={isDeleting}
+                            className="px-2 py-1.5 bg-red-700 text-white text-xs font-bold rounded-lg disabled:opacity-50">
+                            {isDeleting ? '…' : 'Confirm'}
+                          </button>
+                          <button onClick={() => setConfirmDelete(null)}
+                            className="px-2 py-1.5 text-xs rounded-lg"
+                            style={{ background: 'var(--c-surface)', color: 'var(--c-t2)' }}>
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <button onClick={() => setConfirmDelete(m.id)}
+                          className="px-2 py-1.5 text-xs rounded-lg transition-colors"
+                          style={{ border: '1px solid var(--c-border)', color: 'var(--c-t3)' }}
+                          onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--c-red-bd)'; e.currentTarget.style.color = 'var(--c-red)'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--c-border)'; e.currentTarget.style.color = 'var(--c-t3)'; }}
+                          title="Delete match"
+                        >
+                          🗑️
                         </button>
-                      )}
-                      {getFlag(m.homeTeam)} {m.homeTeam} vs {getFlag(m.awayTeam)} {m.awayTeam}
-                      {isDuplicate && (
-                        <span className="text-xs font-medium" style={{ color: 'var(--c-orange)' }}>⚠️ duplicate</span>
                       )}
                     </div>
-                    <div className="text-xs mt-0.5" style={{ color: 'var(--c-t2)' }}>{formatKickoff(m.kickoffTime)}</div>
-                  </div>
-
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <select
-                      value={m.status}
-                      onChange={(e) => handleStatusChange(m.id, e.target.value)}
-                      className="rounded-lg px-2 py-1.5 text-sm focus:outline-none"
-                      style={{
-                        background: 'var(--c-inp)', border: '1px solid var(--c-inp-bd)',
-                        color: 'var(--c-inp-t)',
-                      }}
-                    >
-                      {STATUS_OPTIONS.map((s) => (
-                        <option key={s} value={s}>{s}</option>
-                      ))}
-                    </select>
-
-                    {isConfirming ? (
-                      <div className="flex gap-1">
-                        <button onClick={() => handleDelete(m.id)} disabled={isDeleting}
-                          className="px-2 py-1.5 bg-red-700 text-white text-xs font-bold rounded-lg transition-colors disabled:opacity-50">
-                          {isDeleting ? '…' : 'Confirm'}
-                        </button>
-                        <button onClick={() => setConfirmDelete(null)}
-                          className="px-2 py-1.5 text-xs rounded-lg"
-                          style={{ background: 'var(--c-surface)', color: 'var(--c-t2)' }}>
-                          Cancel
-                        </button>
-                      </div>
-                    ) : (
-                      <button onClick={() => setConfirmDelete(m.id)}
-                        className="px-2 py-1.5 text-xs rounded-lg transition-colors"
-                        style={{ border: '1px solid var(--c-border)', color: 'var(--c-t3)' }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.borderColor = 'var(--c-red-bd)';
-                          e.currentTarget.style.color = 'var(--c-red)';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.borderColor = 'var(--c-border)';
-                          e.currentTarget.style.color = 'var(--c-t3)';
-                        }}
-                        title="Delete match"
-                      >
-                        🗑️
-                      </button>
-                    )}
                   </div>
                 </div>
               );
