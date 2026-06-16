@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useGroup } from '../contexts/GroupContext';
 import { getMatches, getUserPredictions, getUser, getAllUsers } from '../firebase/services';
 import { sortLeaderboard as sort } from '../utils/scoring';
 import UserStatsCard from '../components/UserStatsCard';
@@ -8,6 +9,7 @@ import MatchCard from '../components/MatchCard';
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const { activeGroupId } = useGroup();
   const [matches, setMatches] = useState([]);
   const [predictions, setPredictions] = useState([]);
   const [userStats, setUserStats] = useState(null);
@@ -24,19 +26,32 @@ export default function Dashboard() {
     setMatches(allMatches);
     setPredictions(userPreds);
     setUserStats(stats);
-    const sorted = sort(allUsers.filter((u) => !u.hideFromLeaderboard));
-    const idx = sorted.findIndex((u) => u.uid === user.uid);
+
+    // Rank within active group (or all users for app admin with no group)
+    const poolUsers = activeGroupId
+      ? allUsers.filter((u) => !u.hideFromLeaderboard && (u.groupIds || []).includes(activeGroupId))
+      : allUsers.filter((u) => !u.hideFromLeaderboard);
+    const sorted = sort(poolUsers);
+    const idx = sorted.findIndex((u) => (u.uid || u.id) === user.uid);
     setRank(idx >= 0 ? idx + 1 : null);
     setLoading(false);
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [activeGroupId]);
 
   const predMap = {};
   predictions.forEach((p) => { predMap[p.matchId] = p; });
 
-  const upcoming = matches.filter((m) => m.status === 'upcoming').slice(0, 3);
-  const live = matches.filter((m) => m.status === 'live');
+  // Same group filter as Matches page
+  const groupMatches = matches.filter((m) => {
+    if (!activeGroupId) return !!user?.isAdmin;
+    if (m.groupIds?.length > 0) return m.groupIds.includes(activeGroupId);
+    if (m.status !== 'completed') return true;
+    return false;
+  });
+
+  const upcoming = groupMatches.filter((m) => m.status === 'upcoming').slice(0, 3);
+  const live = groupMatches.filter((m) => m.status === 'live');
 
   if (loading) {
     return (
@@ -61,14 +76,8 @@ export default function Dashboard() {
           </h1>
         </div>
         {rank != null && (
-          <div
-            className="rounded-2xl px-4 py-2.5 text-center"
-            style={{
-              background: 'var(--c-gold-bg)',
-              border: '1px solid var(--c-gold-bd)',
-              transition: 'background 0.2s, border-color 0.2s',
-            }}
-          >
+          <div className="rounded-2xl px-4 py-2.5 text-center"
+            style={{ background: 'var(--c-gold-bg)', border: '1px solid var(--c-gold-bd)', transition: 'background 0.2s, border-color 0.2s' }}>
             <div className="text-xl font-bold" style={{ color: 'var(--c-gold)' }}>#{rank}</div>
             <div className="text-[10px] font-bold uppercase tracking-widest mt-0.5" style={{ color: 'var(--c-t3)' }}>
               Your Rank
@@ -84,10 +93,8 @@ export default function Dashboard() {
       {live.length > 0 && (
         <section className="animate-slide-up">
           <div className="flex items-center gap-2 mb-3">
-            <span
-              className="w-2 h-2 rounded-full animate-pulse"
-              style={{ background: '#EF4444', boxShadow: '0 0 6px rgba(239,68,68,0.8)' }}
-            />
+            <span className="w-2 h-2 rounded-full animate-pulse"
+              style={{ background: '#EF4444', boxShadow: '0 0 6px rgba(239,68,68,0.8)' }} />
             <h2 className="text-[15px] font-semibold" style={{ color: 'var(--c-t1)' }}>Live Now</h2>
           </div>
           <div className="space-y-3">
@@ -102,19 +109,14 @@ export default function Dashboard() {
       <section>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-[15px] font-semibold" style={{ color: 'var(--c-t1)' }}>Upcoming Matches</h2>
-          <Link
-            to="/matches"
-            className="text-[13px] font-medium transition-opacity hover:opacity-80"
-            style={{ color: 'var(--c-primary)' }}
-          >
+          <Link to="/matches" className="text-[13px] font-medium transition-opacity hover:opacity-80"
+            style={{ color: 'var(--c-primary)' }}>
             View all →
           </Link>
         </div>
         {upcoming.length === 0 ? (
-          <div
-            className="rounded-2xl py-12 flex flex-col items-center gap-2"
-            style={{ background: 'var(--c-card)', border: '1px solid var(--c-border)' }}
-          >
+          <div className="rounded-2xl py-12 flex flex-col items-center gap-2"
+            style={{ background: 'var(--c-card)', border: '1px solid var(--c-border)' }}>
             <span className="text-3xl">📅</span>
             <p className="text-[13px]" style={{ color: 'var(--c-t3)' }}>No upcoming matches scheduled</p>
           </div>
@@ -129,27 +131,15 @@ export default function Dashboard() {
 
       {/* Quick nav cards */}
       <div className="grid grid-cols-2 gap-3">
-        <Link
-          to="/leaderboard"
+        <Link to="/leaderboard"
           className="rounded-2xl p-5 flex flex-col items-center gap-2 transition-all duration-200 hover:scale-[1.02]"
-          style={{
-            background: 'var(--c-primary-bg)',
-            border: '1px solid var(--c-primary-bd)',
-            transition: 'background 0.2s, border-color 0.2s',
-          }}
-        >
+          style={{ background: 'var(--c-primary-bg)', border: '1px solid var(--c-primary-bd)', transition: 'background 0.2s, border-color 0.2s' }}>
           <span className="text-3xl">🏆</span>
           <span className="text-[13px] font-semibold" style={{ color: 'var(--c-primary)' }}>Leaderboard</span>
         </Link>
-        <Link
-          to="/my-predictions"
+        <Link to="/my-predictions"
           className="rounded-2xl p-5 flex flex-col items-center gap-2 transition-all duration-200 hover:scale-[1.02]"
-          style={{
-            background: 'var(--c-gold-bg)',
-            border: '1px solid var(--c-gold-bd)',
-            transition: 'background 0.2s, border-color 0.2s',
-          }}
-        >
+          style={{ background: 'var(--c-gold-bg)', border: '1px solid var(--c-gold-bd)', transition: 'background 0.2s, border-color 0.2s' }}>
           <span className="text-3xl">📋</span>
           <span className="text-[13px] font-semibold" style={{ color: 'var(--c-gold)' }}>My Predictions</span>
         </Link>
