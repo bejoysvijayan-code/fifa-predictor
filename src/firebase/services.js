@@ -12,6 +12,8 @@ import {
   orderBy,
   serverTimestamp,
   writeBatch,
+  arrayUnion,
+  arrayRemove,
 } from 'firebase/firestore';
 import { db } from './config';
 
@@ -374,4 +376,30 @@ export async function recalculateLeaderboard() {
   });
 
   await batch.commit();
+}
+
+// ── Groups ─────────────────────────────────────────────
+export async function getGroups() {
+  const snap = await getDocs(query(collection(db, 'groups'), orderBy('name', 'asc')));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+export async function createGroup(name) {
+  return addDoc(collection(db, 'groups'), { name: name.trim(), createdAt: serverTimestamp() });
+}
+
+export async function updateGroup(groupId, data) {
+  await updateDoc(doc(db, 'groups', groupId), data);
+}
+
+export async function deleteGroup(groupId) {
+  await deleteDoc(doc(db, 'groups', groupId));
+}
+
+export async function assignUserToGroup(userId, groupId) {
+  await updateDoc(doc(db, 'users', userId), { groupIds: arrayUnion(groupId) });
+}
+
+export async function removeUserFromGroup(userId, groupId) {
+  await updateDoc(doc(db, 'users', userId), { groupIds: arrayRemove(groupId) });
 }

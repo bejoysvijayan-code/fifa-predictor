@@ -6,6 +6,9 @@ import {
   getMatches,
   deletePrediction,
   recalculateLeaderboard,
+  getGroups,
+  assignUserToGroup,
+  removeUserFromGroup,
 } from '../../firebase/services';
 import { sortLeaderboard, getFlag, formatKickoff, getPredictionStatus } from '../../utils/scoring';
 
@@ -134,17 +137,40 @@ function UserPredictions({ uid, matchMap, onDeleted }) {
 export default function ManageUsers() {
   const [users, setUsers] = useState([]);
   const [matchMap, setMatchMap] = useState({});
+  const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState(null);
   const [expandedUid, setExpandedUid] = useState(null);
+  const [groupUpdating, setGroupUpdating] = useState(null);
 
   async function load() {
-    const [allUsers, allMatches] = await Promise.all([getAllUsers(), getMatches()]);
+    const [allUsers, allMatches, allGroups] = await Promise.all([getAllUsers(), getMatches(), getGroups()]);
     setUsers(sortLeaderboard(allUsers));
     const map = {};
     allMatches.forEach((m) => { map[m.id] = m; });
     setMatchMap(map);
+    setGroups(allGroups);
     setLoading(false);
+  }
+
+  async function toggleGroup(uid, groupId, isCurrentlyIn) {
+    setGroupUpdating(groupId + uid);
+    if (isCurrentlyIn) {
+      await removeUserFromGroup(uid, groupId);
+    } else {
+      await assignUserToGroup(uid, groupId);
+    }
+    setUsers((prev) =>
+      prev.map((u) => {
+        if ((u.uid || u.id) !== uid) return u;
+        const current = u.groupIds || [];
+        return {
+          ...u,
+          groupIds: isCurrentlyIn ? current.filter((g) => g !== groupId) : [...current, groupId],
+        };
+      })
+    );
+    setGroupUpdating(null);
   }
 
   useEffect(() => { load(); }, []);
@@ -251,9 +277,37 @@ export default function ManageUsers() {
                   </button>
                 </div>
 
-                {/* Expanded predictions panel */}
+                {/* Expanded panel: groups + predictions */}
                 {isExpanded && (
                   <div className="mt-3 pt-3" style={{ borderTop: '1px solid var(--c-border)' }}>
+                    {groups.length > 0 && (
+                      <div className="mb-3">
+                        <div className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--c-t2)' }}>
+                          Groups
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {groups.map((g) => {
+                            const isMember = (u.groupIds || []).includes(g.id);
+                            const isUpdating = groupUpdating === g.id + uid;
+                            return (
+                              <button
+                                key={g.id}
+                                disabled={isUpdating}
+                                onClick={() => toggleGroup(uid, g.id, isMember)}
+                                className="px-3 py-1 rounded-full text-xs font-medium transition-all disabled:opacity-50"
+                                style={
+                                  isMember
+                                    ? { background: 'var(--c-primary)', color: '#fff' }
+                                    : { background: 'var(--c-surface)', color: 'var(--c-t2)', border: '1px solid var(--c-border)' }
+                                }
+                              >
+                                {isUpdating ? '…' : isMember ? `✓ ${g.name}` : `+ ${g.name}`}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                     <div className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--c-t2)' }}>
                       Predictions
                     </div>

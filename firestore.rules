@@ -8,18 +8,23 @@ service cloud.firestore {
     }
 
     match /matches/{matchId} {
-      allow read: if request.auth != null;
+      allow read: if true;
       allow write: if request.auth != null;
     }
 
     // Allow any authenticated user to create predictions (needed for admin import)
     // Users can only update their own predictions
     match /predictions/{predId} {
-      allow read: if request.auth != null;
+      allow read: if true;
       allow create: if request.auth != null;
       allow update: if request.auth != null
         && resource.data.userId == request.auth.uid;
       allow delete: if request.auth != null;
+    }
+
+    match /groups/{groupId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
     }
   }
 }

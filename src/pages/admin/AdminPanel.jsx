@@ -4,8 +4,9 @@ import ManageResults from './ManageResults';
 import ImportMatch from './ImportMatch';
 import ManageUsers from './ManageUsers';
 import QuickAdd from './QuickAdd';
+import ManageGroups from './ManageGroups';
 
-const TABS = ['Matches', 'Results', 'Import', 'Users', 'Schedule'];
+const TABS = ['Matches', 'Results', 'Import', 'Users', 'Groups', 'Schedule'];
 
 export default function AdminPanel() {
   const [tab, setTab] = useState('Matches');
@@ -39,7 +40,7 @@ export default function AdminPanel() {
               if (tab !== t) e.currentTarget.style.background = 'transparent';
             }}
           >
-            {t === 'Import' ? '📥 Import' : t === 'Schedule' ? '📅 Schedule' : t}
+            {t === 'Import' ? '📥 Import' : t === 'Schedule' ? '📅 Schedule' : t === 'Groups' ? '👥 Groups' : t}
           </button>
         ))}
       </div>
@@ -48,6 +49,7 @@ export default function AdminPanel() {
       {tab === 'Results'  && <ManageResults />}
       {tab === 'Import'   && <ImportMatch />}
       {tab === 'Users'    && <ManageUsers />}
+      {tab === 'Groups'   && <ManageGroups />}
       {tab === 'Schedule' && <QuickAdd />}
     </div>
   );
