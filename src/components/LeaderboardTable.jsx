@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { sortLeaderboard } from '../utils/scoring';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -56,14 +57,16 @@ export default function LeaderboardTable({ users }) {
           const isMe = u.uid === user?.uid;
           const wrong = (u.totalPredictions || 0) - (u.correctPredictions || 0);
           return (
-            <div
+            <Link
               key={u.id}
+              to={`/profile/${u.uid || u.id}`}
               className="rounded-2xl p-4 flex flex-col items-center text-center"
               style={{
                 background: p.bg,
                 border: `1px solid ${p.border}`,
                 ...(isMe ? { boxShadow: '0 0 20px var(--c-primary-bg)' } : {}),
                 transition: 'background 0.2s, border-color 0.2s',
+                textDecoration: 'none',
               }}
             >
               <div className="text-2xl mb-2">{p.emoji}</div>
@@ -95,7 +98,7 @@ export default function LeaderboardTable({ users }) {
               </div>
 
               <TickX correct={u.correctPredictions || 0} wrong={wrong} />
-            </div>
+            </Link>
           );
         })}
       </div>
@@ -111,13 +114,16 @@ export default function LeaderboardTable({ users }) {
             const isMe  = u.uid === user?.uid;
             const wrong = (u.totalPredictions || 0) - (u.correctPredictions || 0);
             return (
-              <div
+              <Link
                 key={u.id}
+                to={`/profile/${u.uid || u.id}`}
                 className="flex items-center gap-3 px-4 py-3.5"
                 style={{
                   borderBottom: i < rest.length - 1 ? '1px solid var(--c-border)' : 'none',
                   background: isMe ? 'var(--c-primary-bg)' : 'var(--c-card)',
                   transition: 'background 0.2s',
+                  textDecoration: 'none',
+                  display: 'flex',
                 }}
               >
                 {/* Rank */}
@@ -169,7 +175,7 @@ export default function LeaderboardTable({ users }) {
                     {u.totalPoints}pt
                   </span>
                 </div>
-              </div>
+              </Link>
             );
           })}
         </div>

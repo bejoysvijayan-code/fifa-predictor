@@ -57,7 +57,8 @@ export default function App() {
             <Route path="/matches"        element={<ProtectedRoute><Layout><Matches /></Layout></ProtectedRoute>} />
             <Route path="/my-predictions" element={<ProtectedRoute><Layout><MyPredictions /></Layout></ProtectedRoute>} />
             <Route path="/leaderboard"    element={<ProtectedRoute><Layout><Leaderboard /></Layout></ProtectedRoute>} />
-            <Route path="/profile"        element={<ProtectedRoute><Layout><Profile /></Layout></ProtectedRoute>} />
+            <Route path="/profile"         element={<ProtectedRoute><Layout><Profile /></Layout></ProtectedRoute>} />
+            <Route path="/profile/:uid"   element={<ProtectedRoute><Layout><Profile /></Layout></ProtectedRoute>} />
             <Route path="/admin"          element={<ProtectedRoute adminOnly><Layout><AdminPanel /></Layout></ProtectedRoute>} />
 
             <Route path="*" element={<Navigate to="/" replace />} />

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
   getUser, updateUserProfile, getUserPredictions, getMatches, getAllPredictions,
@@ -95,6 +96,10 @@ function Field({ label, value, onChange, type = 'text', readOnly = false, placeh
 
 export default function Profile() {
   const { user } = useAuth();
+  const { uid: paramUid } = useParams();
+  const isOwn = !paramUid || paramUid === user?.uid;
+  const targetUid = isOwn ? user?.uid : paramUid;
+
   const [profile, setProfile] = useState(null);
   const [badges, setBadges] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -107,22 +112,22 @@ export default function Profile() {
   const [favoritePlayer, setFavoritePlayer] = useState('');
 
   useEffect(() => {
-    if (!user) return;
+    if (!targetUid) return;
     Promise.all([
-      getUser(user.uid),
-      getUserPredictions(user.uid),
+      getUser(targetUid),
+      getUserPredictions(targetUid),
       getMatches(),
       getAllPredictions(),
     ]).then(([userData, userPreds, allMatches, allPreds]) => {
       setProfile(userData);
-      setName(userData?.displayName || user.displayName || '');
+      setName(userData?.displayName || '');
       setPhone(userData?.phone || '');
       setFavoriteTeam(userData?.favoriteTeam || '');
       setFavoritePlayer(userData?.favoritePlayer || '');
-      setBadges(computeBadges(userPreds, allMatches, allPreds, user.uid));
+      setBadges(computeBadges(userPreds, allMatches, allPreds, targetUid));
       setLoading(false);
     });
-  }, [user]);
+  }, [targetUid]);
 
   async function handleSave(e) {
     e.preventDefault();
@@ -145,14 +150,16 @@ export default function Profile() {
   const correct  = profile?.correctPredictions ?? 0;
   const total    = profile?.totalPredictions ?? 0;
   const points   = profile?.totalPoints ?? 0;
+  const photoURL = isOwn ? user.photoURL : profile?.photoURL;
+  const email    = isOwn ? user.email : profile?.email;
 
   return (
     <div className="max-w-xl mx-auto px-4 py-7 space-y-5 animate-fade-in">
 
       {/* ── Avatar + name ── */}
       <div className="flex flex-col items-center gap-3 py-4">
-        {user.photoURL ? (
-          <img src={user.photoURL} alt={name}
+        {photoURL ? (
+          <img src={photoURL} alt={name}
             className="w-20 h-20 rounded-full"
             style={{ border: '3px solid var(--c-primary)' }} />
         ) : (
@@ -162,8 +169,17 @@ export default function Profile() {
           </div>
         )}
         <div className="text-center">
-          <div className="text-[20px] font-bold" style={{ color: 'var(--c-t1)' }}>{name || 'Your Profile'}</div>
-          <div className="text-[13px] mt-0.5" style={{ color: 'var(--c-t3)' }}>{user.email}</div>
+          <div className="text-[20px] font-bold" style={{ color: 'var(--c-t1)' }}>
+            {name || 'Unknown'}
+            {isOwn && <span className="text-[13px] font-normal ml-2" style={{ color: 'var(--c-t3)' }}>(you)</span>}
+          </div>
+          {email && <div className="text-[13px] mt-0.5" style={{ color: 'var(--c-t3)' }}>{email}</div>}
+          {favoriteTeam && (
+            <div className="text-[12px] mt-1" style={{ color: 'var(--c-t2)' }}>
+              Supports <strong style={{ color: 'var(--c-primary)' }}>{favoriteTeam}</strong>
+              {favoritePlayer && <> · Fav player: <strong style={{ color: 'var(--c-primary)' }}>{favoritePlayer}</strong></>}
+            </div>
+          )}
         </div>
       </div>
 
@@ -183,26 +199,28 @@ export default function Profile() {
         ))}
       </div>
 
-      {/* ── Edit profile ── */}
-      <div className="rounded-2xl p-5 space-y-4"
-        style={{ background: 'var(--c-card)', border: '1px solid var(--c-border)' }}>
-        <div className="text-[13px] font-semibold" style={{ color: 'var(--c-t1)' }}>Profile Info</div>
-        <form onSubmit={handleSave} className="space-y-3">
-          <Field label="Display Name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" />
-          <Field label="Email" value={user.email} readOnly />
-          <Field label="Phone (optional)" value={phone} onChange={(e) => setPhone(e.target.value)}
-            type="tel" placeholder="+91 98765 43210" />
-          <Field label="Favourite Team" value={favoriteTeam} onChange={(e) => setFavoriteTeam(e.target.value)}
-            placeholder="e.g. Brazil" />
-          <Field label="Favourite Player" value={favoritePlayer} onChange={(e) => setFavoritePlayer(e.target.value)}
-            placeholder="e.g. Vinicius Jr" />
-          <button type="submit" disabled={saving}
-            className="w-full py-2.5 rounded-xl text-[13px] font-semibold transition-all disabled:opacity-50"
-            style={{ background: saved ? 'var(--c-green)' : 'var(--c-primary)', color: '#fff' }}>
-            {saving ? 'Saving…' : saved ? '✓ Saved!' : 'Save Changes'}
-          </button>
-        </form>
-      </div>
+      {/* ── Edit profile (own only) ── */}
+      {isOwn && (
+        <div className="rounded-2xl p-5 space-y-4"
+          style={{ background: 'var(--c-card)', border: '1px solid var(--c-border)' }}>
+          <div className="text-[13px] font-semibold" style={{ color: 'var(--c-t1)' }}>Profile Info</div>
+          <form onSubmit={handleSave} className="space-y-3">
+            <Field label="Display Name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" />
+            <Field label="Email" value={user.email} readOnly />
+            <Field label="Phone (optional)" value={phone} onChange={(e) => setPhone(e.target.value)}
+              type="tel" placeholder="+91 98765 43210" />
+            <Field label="Favourite Team" value={favoriteTeam} onChange={(e) => setFavoriteTeam(e.target.value)}
+              placeholder="e.g. Brazil" />
+            <Field label="Favourite Player" value={favoritePlayer} onChange={(e) => setFavoritePlayer(e.target.value)}
+              placeholder="e.g. Vinicius Jr" />
+            <button type="submit" disabled={saving}
+              className="w-full py-2.5 rounded-xl text-[13px] font-semibold transition-all disabled:opacity-50"
+              style={{ background: saved ? 'var(--c-green)' : 'var(--c-primary)', color: '#fff' }}>
+              {saving ? 'Saving…' : saved ? '✓ Saved!' : 'Save Changes'}
+            </button>
+          </form>
+        </div>
+      )}
 
       {/* ── Badges ── */}
       {badges && (
