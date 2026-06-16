@@ -59,12 +59,13 @@ export default function Matches() {
   }
 
   // Group-scoped match list:
-  // - upcoming/live: always show (global polls everyone can predict on)
-  // - completed: show only if match is tagged to this group OR a group member predicted it
+  // - tagged matches (any status): only show in their group
+  // - untagged upcoming/live: global (show to all active users)
+  // - untagged completed: use prediction-based group check
   const groupMatches = matches.filter((m) => {
     if (!activeGroupId) return true;
+    if (m.groupIds?.length > 0) return m.groupIds.includes(activeGroupId);
     if (m.status !== 'completed') return true;
-    if ((m.groupIds || []).includes(activeGroupId)) return true;
     return !!matchHasGroupPred[m.id];
   });
 

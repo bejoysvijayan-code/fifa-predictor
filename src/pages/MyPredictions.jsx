@@ -44,8 +44,8 @@ export default function MyPredictions() {
         .filter((m) => {
           if (!predMap[m.id]) return false; // must have user's prediction
           if (!activeGroupId) return true;
-          if (m.status !== 'completed') return true; // upcoming/live always shown
-          if ((m.groupIds || []).includes(activeGroupId)) return true;
+          if (m.groupIds?.length > 0) return m.groupIds.includes(activeGroupId);
+          if (m.status !== 'completed') return true; // untagged upcoming = global
           return !!matchHasGroupPred[m.id];
         })
         .map((m) => ({
