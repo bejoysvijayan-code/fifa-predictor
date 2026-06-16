@@ -20,13 +20,12 @@ function Layout({ children }) {
   const { myGroups, activeGroup, loading: groupLoading } = useGroup();
   const location = useLocation();
 
-  // Redirect to group chooser/waiting screen if:
-  // - user has no groups at all (shows "waiting to be added" message), or
-  // - user has multiple groups but hasn't picked one yet
+  // Redirect to group chooser only when user has 2+ groups and hasn't picked one yet
   if (
     !groupLoading &&
     !user?.isAdmin &&
-    (myGroups.length === 0 || (myGroups.length > 1 && !activeGroup)) &&
+    myGroups.length > 1 &&
+    !activeGroup &&
     location.pathname !== '/choose-group'
   ) {
     return <Navigate to="/choose-group" replace />;

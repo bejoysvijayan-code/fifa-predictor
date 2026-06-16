@@ -9,7 +9,7 @@ import MatchCard from '../components/MatchCard';
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const { activeGroupId } = useGroup();
+  const { activeGroupId, myGroups } = useGroup();
   const [matches, setMatches] = useState([]);
   const [predictions, setPredictions] = useState([]);
   const [userStats, setUserStats] = useState(null);
@@ -62,6 +62,25 @@ export default function Dashboard() {
   }
 
   const firstName = user.displayName?.split(' ')[0] || 'there';
+
+  // No group yet — show waiting message
+  if (!user?.isAdmin && myGroups.length === 0) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-7 animate-fade-in">
+        <h1 className="text-[26px] font-bold tracking-tight mb-8" style={{ color: 'var(--c-t1)' }}>
+          Welcome, {firstName} 👋
+        </h1>
+        <div className="rounded-2xl p-8 text-center space-y-3"
+          style={{ background: 'var(--c-card)', border: '1px solid var(--c-border)' }}>
+          <div className="text-4xl">👋</div>
+          <div className="text-[15px] font-semibold" style={{ color: 'var(--c-t1)' }}>You're not in a group yet</div>
+          <p className="text-[13px]" style={{ color: 'var(--c-t2)' }}>
+            Ask your group admin to add you. Once added, you'll see your community's polls here.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-7 space-y-7 animate-fade-in">
