@@ -135,22 +135,49 @@ export default function Leaderboard() {
     });
   }, []);
 
-  const filteredUsers =
-    activeGroup === 'all'
-      ? users
-      : users.filter((u) => (u.groupIds || []).includes(activeGroup));
-
   // Only show groups the current user belongs to or admins
   const currentUserData = users.find((u) => (u.uid || u.id) === user?.uid);
   const myGroupIds = new Set(currentUserData?.groupIds || []);
+  const isAppAdmin = !!user?.isAdmin;
   const myGroups = groups.filter(
     (g) => myGroupIds.has(g.id) || (g.adminIds || []).includes(user?.uid)
   );
+
+  // "All" tab: only show users sharing a group with the current user (admins see everyone)
+  const allTabUsers = isAppAdmin
+    ? users
+    : users.filter((u) => {
+        const uid = u.uid || u.id;
+        if (uid === user?.uid) return true;
+        return (u.groupIds || []).some((gid) => myGroupIds.has(gid));
+      });
+
+  const filteredUsers =
+    activeGroup === 'all'
+      ? allTabUsers
+      : users.filter((u) => (u.groupIds || []).includes(activeGroup));
 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
         <div className="spinner" />
+      </div>
+    );
+  }
+
+  // No groups yet — waiting screen
+  if (!isAppAdmin && myGroupIds.size === 0) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-7 animate-fade-in">
+        <h1 className="text-[26px] font-bold tracking-tight mb-8" style={{ color: 'var(--c-t1)' }}>Leaderboard</h1>
+        <div className="rounded-2xl p-8 text-center space-y-3"
+          style={{ background: 'var(--c-card)', border: '1px solid var(--c-border)' }}>
+          <div className="text-4xl">👋</div>
+          <div className="text-[15px] font-semibold" style={{ color: 'var(--c-t1)' }}>You're not in a group yet</div>
+          <p className="text-[13px]" style={{ color: 'var(--c-t2)' }}>
+            Ask your group admin to add you. Once added, you'll see your group's leaderboard here.
+          </p>
+        </div>
       </div>
     );
   }

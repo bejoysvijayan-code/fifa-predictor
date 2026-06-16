@@ -103,6 +103,7 @@ export default function Profile() {
   const [profile, setProfile] = useState(null);
   const [badges, setBadges] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [accessDenied, setAccessDenied] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -113,12 +114,23 @@ export default function Profile() {
 
   useEffect(() => {
     if (!targetUid) return;
+    const needsAccessCheck = !isOwn && !user?.isAdmin;
     Promise.all([
       getUser(targetUid),
       getUserPredictions(targetUid),
       getMatches(),
       getAllPredictions(),
-    ]).then(([userData, userPreds, allMatches, allPreds]) => {
+      needsAccessCheck ? getUser(user.uid) : Promise.resolve(null),
+    ]).then(([userData, userPreds, allMatches, allPreds, meData]) => {
+      if (needsAccessCheck) {
+        const targetGroups = new Set(userData?.groupIds || []);
+        const myGroups = meData?.groupIds || [];
+        if (!myGroups.some((gid) => targetGroups.has(gid))) {
+          setAccessDenied(true);
+          setLoading(false);
+          return;
+        }
+      }
       setProfile(userData);
       setName(userData?.displayName || '');
       setPhone(userData?.phone || '');
@@ -142,6 +154,15 @@ export default function Profile() {
     return (
       <div className="flex items-center justify-center py-24">
         <div className="spinner" />
+      </div>
+    );
+  }
+
+  if (accessDenied) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 gap-3">
+        <span className="text-4xl">🔒</span>
+        <p className="text-[14px]" style={{ color: 'var(--c-t2)' }}>You don't share a group with this user.</p>
       </div>
     );
   }
