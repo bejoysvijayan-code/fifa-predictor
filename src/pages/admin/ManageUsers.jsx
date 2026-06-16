@@ -147,14 +147,20 @@ export default function ManageUsers() {
   const [mergeSearch, setMergeSearch] = useState('');
   const [mergeTarget, setMergeTarget] = useState(null);
   const [merging, setMerging] = useState(null);
+  const [pollCounts, setPollCounts] = useState({});
 
   async function load() {
-    const [allUsers, allMatches, allGroups] = await Promise.all([getAllUsers(), getMatches(), getGroups()]);
+    const [allUsers, allMatches, allGroups, allPredictions] = await Promise.all([
+      getAllUsers(), getMatches(), getGroups(), getAllPredictions(),
+    ]);
     setUsers(sortLeaderboard(allUsers));
     const map = {};
     allMatches.forEach((m) => { map[m.id] = m; });
     setMatchMap(map);
     setGroups(allGroups);
+    const counts = {};
+    allPredictions.forEach((p) => { counts[p.userId] = (counts[p.userId] || 0) + 1; });
+    setPollCounts(counts);
     setLoading(false);
   }
 
@@ -268,7 +274,7 @@ export default function ManageUsers() {
                       )}
                     </div>
                     <div className="text-xs truncate" style={{ color: 'var(--c-t2)' }}>
-                      {u.email || 'No email'} · {u.correctPredictions ?? 0} correct · {u.totalPoints ?? 0} pts
+                      {u.email || 'No email'} · <span style={{ color: 'var(--c-primary)' }}>{pollCounts[uid] || 0} polls</span> · {u.correctPredictions ?? 0} correct · {u.totalPoints ?? 0} pts
                     </div>
                   </div>
 

@@ -91,6 +91,7 @@ export default function LeaderboardTable({ users }) {
 
               <div className="mt-2">
                 <div className="text-[16px] font-bold" style={{ color: p.color }}>{u.totalPoints} pts</div>
+                <div className="text-[10px] mt-0.5" style={{ color: 'var(--c-t3)' }}>{u.totalPredictions || 0} polls</div>
               </div>
 
               <TickX correct={u.correctPredictions || 0} wrong={wrong} />
@@ -160,6 +161,9 @@ export default function LeaderboardTable({ users }) {
                       <path d="M4 4l4 4M8 4l-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
                     </svg>
                     {wrong}
+                  </span>
+                  <span className="text-[11px]" style={{ color: 'var(--c-t3)' }}>
+                    {u.totalPredictions || 0}p
                   </span>
                   <span className="text-[12px] font-bold" style={{ color: 'var(--c-gold)' }}>
                     {u.totalPoints}pt
