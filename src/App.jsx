@@ -11,6 +11,7 @@ import Matches from './pages/Matches';
 import MyPredictions from './pages/MyPredictions';
 import Leaderboard from './pages/Leaderboard';
 import Profile from './pages/Profile';
+import GroupAdmin from './pages/GroupAdmin';
 import AdminPanel from './pages/admin/AdminPanel';
 
 function Layout({ children }) {
@@ -58,7 +59,8 @@ export default function App() {
             <Route path="/my-predictions" element={<ProtectedRoute><Layout><MyPredictions /></Layout></ProtectedRoute>} />
             <Route path="/leaderboard"    element={<ProtectedRoute><Layout><Leaderboard /></Layout></ProtectedRoute>} />
             <Route path="/profile"         element={<ProtectedRoute><Layout><Profile /></Layout></ProtectedRoute>} />
-            <Route path="/profile/:uid"   element={<ProtectedRoute><Layout><Profile /></Layout></ProtectedRoute>} />
+            <Route path="/profile/:uid"      element={<ProtectedRoute><Layout><Profile /></Layout></ProtectedRoute>} />
+            <Route path="/group-admin/:groupId" element={<ProtectedRoute><Layout><GroupAdmin /></Layout></ProtectedRoute>} />
             <Route path="/admin"          element={<ProtectedRoute adminOnly><Layout><AdminPanel /></Layout></ProtectedRoute>} />
 
             <Route path="*" element={<Navigate to="/" replace />} />

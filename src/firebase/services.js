@@ -412,6 +412,18 @@ export async function removeUserFromGroup(userId, groupId) {
   await updateDoc(doc(db, 'users', userId), { groupIds: arrayRemove(groupId) });
 }
 
+export async function setGroupAdmin(groupId, userId, isAdmin) {
+  await updateDoc(doc(db, 'groups', groupId), {
+    adminIds: isAdmin ? arrayUnion(userId) : arrayRemove(userId),
+  });
+}
+
+export async function getGroupMembers(groupId) {
+  const q = query(collection(db, 'users'), where('groupIds', 'array-contains', groupId));
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
 // ── Merge Users ────────────────────────────────────────
 // Transfers all sourceUid predictions to targetUid, then deletes sourceUid.
 // If target already has a prediction for a match, the source prediction is dropped.

@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import { getAllUsers, getGroups, getAllPredictions, getMatches } from '../firebase/services';
 import LeaderboardTable from '../components/LeaderboardTable';
 import { sortLeaderboard } from '../utils/scoring';
@@ -110,6 +112,7 @@ function GroupTrivia({ members, allPreds, allMatches }) {
 }
 
 export default function Leaderboard() {
+  const { user } = useAuth();
   const [users, setUsers] = useState([]);
   const [groups, setGroups] = useState([]);
   const [allPreds, setAllPreds] = useState([]);
@@ -178,6 +181,18 @@ export default function Leaderboard() {
               {g.name}
             </button>
           ))}
+          {/* Manage Members button — visible to group admins */}
+          {activeGroup !== 'all' && (() => {
+            const activeGroupObj = groups.find((g) => g.id === activeGroup);
+            const canManage = user?.isAdmin || (activeGroupObj?.adminIds || []).includes(user?.uid);
+            return canManage ? (
+              <Link to={`/group-admin/${activeGroup}`}
+                className="px-3 py-1.5 rounded-full text-[12px] font-medium"
+                style={{ background: 'var(--c-gold-bg)', color: 'var(--c-gold)', border: '1px solid var(--c-gold-bd)' }}>
+                ⚙️ Manage Members
+              </Link>
+            ) : null;
+          })()}
         </div>
       )}
 
