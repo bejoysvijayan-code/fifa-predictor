@@ -403,3 +403,30 @@ export async function assignUserToGroup(userId, groupId) {
 export async function removeUserFromGroup(userId, groupId) {
   await updateDoc(doc(db, 'users', userId), { groupIds: arrayRemove(groupId) });
 }
+
+// ── Merge Users ────────────────────────────────────────
+// Transfers all sourceUid predictions to targetUid, then deletes sourceUid.
+// If target already has a prediction for a match, the source prediction is dropped.
+export async function mergeUsers(sourceUid, targetUid) {
+  const [sourcePreds, targetPreds] = await Promise.all([
+    getUserPredictions(sourceUid),
+    getUserPredictions(targetUid),
+  ]);
+
+  const targetMatchIds = new Set(targetPreds.map((p) => p.matchId));
+  const batch = writeBatch(db);
+
+  sourcePreds.forEach((p) => {
+    const ref = doc(db, 'predictions', p.id);
+    if (targetMatchIds.has(p.matchId)) {
+      batch.delete(ref);
+    } else {
+      batch.update(ref, { userId: targetUid });
+    }
+  });
+
+  batch.delete(doc(db, 'users', sourceUid));
+
+  await batch.commit();
+  await recalculateLeaderboard();
+}

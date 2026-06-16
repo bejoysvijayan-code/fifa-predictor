@@ -9,6 +9,7 @@ import {
   getGroups,
   assignUserToGroup,
   removeUserFromGroup,
+  mergeUsers,
 } from '../../firebase/services';
 import { sortLeaderboard, getFlag, formatKickoff, getPredictionStatus } from '../../utils/scoring';
 
@@ -142,6 +143,10 @@ export default function ManageUsers() {
   const [toggling, setToggling] = useState(null);
   const [expandedUid, setExpandedUid] = useState(null);
   const [groupUpdating, setGroupUpdating] = useState(null);
+  const [mergeUid, setMergeUid] = useState(null);
+  const [mergeSearch, setMergeSearch] = useState('');
+  const [mergeTarget, setMergeTarget] = useState(null);
+  const [merging, setMerging] = useState(null);
 
   async function load() {
     const [allUsers, allMatches, allGroups] = await Promise.all([getAllUsers(), getMatches(), getGroups()]);
@@ -151,6 +156,16 @@ export default function ManageUsers() {
     setMatchMap(map);
     setGroups(allGroups);
     setLoading(false);
+  }
+
+  async function handleMerge(sourceUid, targetUid) {
+    setMerging(sourceUid);
+    await mergeUsers(sourceUid, targetUid);
+    setMergeTarget(null);
+    setMergeSearch('');
+    setExpandedUid(null);
+    await load();
+    setMerging(null);
   }
 
   async function toggleGroup(uid, groupId, isCurrentlyIn) {
@@ -308,6 +323,105 @@ export default function ManageUsers() {
                         </div>
                       </div>
                     )}
+                    {/* ── Merge ── */}
+                    <div className="mb-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--c-t2)' }}>
+                          Merge
+                        </div>
+                        {mergeUid !== uid && (
+                          <button
+                            onClick={() => { setMergeUid(uid); setMergeSearch(''); setMergeTarget(null); }}
+                            className="text-xs px-2 py-1 rounded-lg"
+                            style={{ background: 'var(--c-surface)', color: 'var(--c-t2)', border: '1px solid var(--c-border)' }}
+                          >
+                            🔀 Merge into another user…
+                          </button>
+                        )}
+                      </div>
+
+                      {mergeUid === uid && (
+                        <div className="rounded-xl p-3 space-y-2" style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+                          <p className="text-xs" style={{ color: 'var(--c-t2)' }}>
+                            Pick the real account to keep. <strong style={{ color: 'var(--c-t1)' }}>{u.displayName}</strong>'s predictions will transfer to them, then this account is deleted.
+                          </p>
+                          <input
+                            autoFocus
+                            className="w-full rounded-lg px-3 py-2 text-xs"
+                            style={{ background: 'var(--c-input)', border: '1px solid var(--c-border)', color: 'var(--c-t1)' }}
+                            placeholder="Search by name…"
+                            value={mergeSearch}
+                            onChange={(e) => { setMergeSearch(e.target.value); setMergeTarget(null); }}
+                          />
+                          {mergeSearch.trim().length > 0 && (
+                            <div className="rounded-lg overflow-hidden" style={{ border: '1px solid var(--c-border)' }}>
+                              {users
+                                .filter((other) => {
+                                  const otherId = other.uid || other.id;
+                                  return otherId !== uid && other.displayName?.toLowerCase().includes(mergeSearch.toLowerCase());
+                                })
+                                .slice(0, 5)
+                                .map((other, idx, arr) => {
+                                  const otherId = other.uid || other.id;
+                                  const isSelected = mergeTarget?.id === otherId;
+                                  return (
+                                    <button
+                                      key={otherId}
+                                      onClick={() => setMergeTarget({ id: otherId, name: other.displayName })}
+                                      className="w-full flex items-center gap-2 px-3 py-2 text-xs text-left"
+                                      style={{
+                                        background: isSelected ? 'var(--c-primary-bg)' : 'var(--c-card)',
+                                        borderBottom: idx < arr.length - 1 ? '1px solid var(--c-border)' : 'none',
+                                        color: isSelected ? 'var(--c-primary)' : 'var(--c-t1)',
+                                      }}
+                                    >
+                                      {other.photoURL
+                                        ? <img src={other.photoURL} className="w-5 h-5 rounded-full flex-shrink-0" alt="" />
+                                        : <div className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0" style={{ background: 'var(--c-primary)', color: '#fff' }}>{other.displayName?.[0]}</div>
+                                      }
+                                      <span className="flex-1 truncate">{other.displayName}</span>
+                                      {other.isManual && <span style={{ color: 'var(--c-t3)' }}>imported</span>}
+                                      {isSelected && <span style={{ color: 'var(--c-primary)' }}>✓</span>}
+                                    </button>
+                                  );
+                                })}
+                            </div>
+                          )}
+                          {mergeTarget && (
+                            <div className="flex items-center gap-2 pt-1">
+                              <span className="text-xs flex-1" style={{ color: 'var(--c-t2)' }}>
+                                Merge <strong style={{ color: 'var(--c-red)' }}>{u.displayName}</strong> → <strong style={{ color: 'var(--c-green)' }}>{mergeTarget.name}</strong>
+                              </span>
+                              <button
+                                onClick={() => { setMergeUid(null); setMergeTarget(null); setMergeSearch(''); }}
+                                className="px-2 py-1 text-xs rounded-lg"
+                                style={{ background: 'var(--c-border)', color: 'var(--c-t1)' }}
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                disabled={merging === uid}
+                                onClick={() => handleMerge(uid, mergeTarget.id)}
+                                className="px-3 py-1 text-xs font-bold rounded-lg disabled:opacity-50"
+                                style={{ background: '#EF4444', color: '#fff' }}
+                              >
+                                {merging === uid ? 'Merging…' : 'Confirm Merge'}
+                              </button>
+                            </div>
+                          )}
+                          {mergeTarget === null && (
+                            <button
+                              onClick={() => { setMergeUid(null); setMergeSearch(''); }}
+                              className="text-xs"
+                              style={{ color: 'var(--c-t3)' }}
+                            >
+                              Cancel
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
                     <div className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--c-t2)' }}>
                       Predictions
                     </div>
