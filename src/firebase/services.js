@@ -35,11 +35,19 @@ export async function createOrUpdateUser(user) {
       createdAt: serverTimestamp(),
     });
   } else {
+    // Don't overwrite displayName — user may have customised it on their profile
     await updateDoc(ref, {
-      displayName: user.displayName,
       photoURL: user.photoURL,
+      email: user.email,
     });
   }
+}
+
+export async function updateUserProfile(uid, data) {
+  const allowed = ['displayName', 'phone', 'favoriteTeam', 'favoritePlayer'];
+  const update = {};
+  allowed.forEach((k) => { if (data[k] !== undefined) update[k] = data[k]; });
+  await updateDoc(doc(db, 'users', uid), update);
 }
 
 export async function getUser(uid) {

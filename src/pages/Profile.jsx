@@ -1,34 +1,136 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { getUser, getAllUsers } from '../firebase/services';
-import { sortLeaderboard } from '../utils/scoring';
+import {
+  getUser, updateUserProfile, getUserPredictions, getMatches, getAllPredictions,
+} from '../firebase/services';
+
+// ── Badge computation ──────────────────────────────────
+function computeBadges(userPreds, allMatches, allPreds, uid) {
+  const matchMap = {};
+  allMatches.forEach((m) => { matchMap[m.id] = m; });
+
+  const predCounts = {};
+  allPreds.forEach((p) => {
+    if (!predCounts[p.matchId]) predCounts[p.matchId] = {};
+    predCounts[p.matchId][p.prediction] = (predCounts[p.matchId][p.prediction] || 0) + 1;
+  });
+
+  const firstPred = {};
+  allPreds.forEach((p) => {
+    if (!p.predictionTime) return;
+    const t = p.predictionTime.toDate ? p.predictionTime.toDate() : new Date(p.predictionTime);
+    if (!firstPred[p.matchId] || t < firstPred[p.matchId].time) {
+      firstPred[p.matchId] = { uid: p.userId, time: t };
+    }
+  });
+
+  const sorted = [...userPreds]
+    .filter((p) => matchMap[p.matchId])
+    .sort((a, b) => (matchMap[a.matchId]?.matchNumber ?? 999) - (matchMap[b.matchId]?.matchNumber ?? 999));
+
+  let maxStreak = 0, cur = 0;
+  sorted.forEach((p) => {
+    const m = matchMap[p.matchId];
+    if (!m || m.status !== 'completed' || !m.result) return;
+    if (p.prediction === m.result.winner) { cur++; maxStreak = Math.max(maxStreak, cur); }
+    else cur = 0;
+  });
+
+  let contrarian = 0;
+  userPreds.forEach((p) => {
+    const counts = predCounts[p.matchId];
+    if (!counts) return;
+    const majority = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0];
+    if (majority && p.prediction !== majority) contrarian++;
+  });
+
+  let nightOwl = 0;
+  userPreds.forEach((p) => {
+    const raw = p.predictionTime || p.timestamp;
+    if (!raw) return;
+    const t = raw.toDate ? raw.toDate() : new Date(raw);
+    const h = t.getHours();
+    if (h >= 22 || h < 6) nightOwl++;
+  });
+
+  let triggerFinger = 0;
+  userPreds.forEach((p) => {
+    if (firstPred[p.matchId]?.uid === uid) triggerFinger++;
+  });
+
+  return { maxStreak, contrarian, nightOwl, triggerFinger };
+}
+
+const BADGE_DEFS = [
+  { key: 'maxStreak',     emoji: '🔥', label: 'Longest Streak',  unit: (v) => `${v} correct in a row`,   desc: 'Most consecutive correct predictions' },
+  { key: 'contrarian',   emoji: '🦅', label: 'Contrarian',       unit: (v) => `${v} against the crowd`,  desc: 'Picked against the majority vote' },
+  { key: 'nightOwl',     emoji: '🌙', label: 'Night Owl',        unit: (v) => `${v} late-night picks`,   desc: 'Predictions made between 10 PM – 6 AM' },
+  { key: 'triggerFinger',emoji: '⚡', label: 'Trigger Finger',   unit: (v) => `First in ${v} matches`,  desc: 'Was the first to predict in a match' },
+];
+
+function Field({ label, value, onChange, type = 'text', readOnly = false, placeholder = '' }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--c-t3)' }}>
+        {label}
+      </label>
+      <input
+        type={type}
+        value={value}
+        onChange={onChange}
+        readOnly={readOnly}
+        placeholder={placeholder}
+        className="rounded-xl px-3 py-2.5 text-[13px]"
+        style={{
+          background: readOnly ? 'var(--c-surface)' : 'var(--c-input)',
+          border: '1px solid var(--c-border)',
+          color: readOnly ? 'var(--c-t3)' : 'var(--c-t1)',
+          outline: 'none',
+          cursor: readOnly ? 'default' : 'text',
+        }}
+      />
+    </div>
+  );
+}
 
 export default function Profile() {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
-  const [stats, setStats] = useState(null);
-  const [rank, setRank] = useState(null);
+  const { user } = useAuth();
+  const [profile, setProfile] = useState(null);
+  const [badges, setBadges] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [favoriteTeam, setFavoriteTeam] = useState('');
+  const [favoritePlayer, setFavoritePlayer] = useState('');
 
   useEffect(() => {
-    async function load() {
-      const [userData, allUsers] = await Promise.all([
-        getUser(user.uid),
-        getAllUsers(),
-      ]);
-      setStats(userData);
-      const sorted = sortLeaderboard(allUsers.filter((u) => !u.hideFromLeaderboard));
-      const idx = sorted.findIndex((u) => u.uid === user.uid);
-      setRank(idx >= 0 ? idx + 1 : null);
+    if (!user) return;
+    Promise.all([
+      getUser(user.uid),
+      getUserPredictions(user.uid),
+      getMatches(),
+      getAllPredictions(),
+    ]).then(([userData, userPreds, allMatches, allPreds]) => {
+      setProfile(userData);
+      setName(userData?.displayName || user.displayName || '');
+      setPhone(userData?.phone || '');
+      setFavoriteTeam(userData?.favoriteTeam || '');
+      setFavoritePlayer(userData?.favoritePlayer || '');
+      setBadges(computeBadges(userPreds, allMatches, allPreds, user.uid));
       setLoading(false);
-    }
-    load();
-  }, []);
+    });
+  }, [user]);
 
-  async function handleLogout() {
-    await logout();
-    navigate('/login');
+  async function handleSave(e) {
+    e.preventDefault();
+    setSaving(true);
+    await updateUserProfile(user.uid, { displayName: name.trim(), phone, favoriteTeam, favoritePlayer });
+    setSaved(true);
+    setSaving(false);
+    setTimeout(() => setSaved(false), 2500);
   }
 
   if (loading) {
@@ -39,121 +141,100 @@ export default function Profile() {
     );
   }
 
-  const statItems = [
-    { label: 'Predictions', value: stats?.totalPredictions ?? 0, color: 'var(--c-t1)' },
-    { label: 'Correct',     value: stats?.correctPredictions ?? 0, color: 'var(--c-green)' },
-    { label: 'Accuracy',    value: `${(stats?.accuracyPercentage ?? 0).toFixed(1)}%`, color: 'var(--c-primary)' },
-    { label: 'Points',      value: stats?.totalPoints ?? 0, color: 'var(--c-gold)' },
-  ];
-
-  const rankMedal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : null;
+  const accuracy = profile?.accuracyPercentage ?? 0;
+  const correct  = profile?.correctPredictions ?? 0;
+  const total    = profile?.totalPredictions ?? 0;
+  const points   = profile?.totalPoints ?? 0;
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-7 space-y-5 animate-fade-in">
-      {/* Profile hero */}
-      <div
-        className="rounded-2xl p-7 flex flex-col items-center text-center"
-        style={{
-          background: 'linear-gradient(160deg, var(--c-primary-bg) 0%, var(--c-card) 100%)',
-          border: '1px solid var(--c-primary-bd)',
-          transition: 'background 0.2s, border-color 0.2s',
-        }}
-      >
-        <div className="relative mb-4">
-          {user.photoURL ? (
-            <img
-              src={user.photoURL}
-              alt={user.displayName}
-              className="w-20 h-20 rounded-full"
-              style={{
-                border: '3px solid var(--c-primary-bd)',
-                boxShadow: '0 0 28px var(--c-primary-bg)',
-              }}
-            />
-          ) : (
-            <div
-              className="w-20 h-20 rounded-full flex items-center justify-center text-2xl font-bold"
-              style={{
-                background: 'linear-gradient(135deg, #5B6CF8, #8B5CF6)',
-                color: '#fff',
-                boxShadow: '0 0 28px var(--c-primary-bg)',
-              }}
-            >
-              {user.displayName?.[0] || '?'}
-            </div>
-          )}
-          {rankMedal && (
-            <div className="absolute -bottom-1 -right-1 text-xl">{rankMedal}</div>
-          )}
-        </div>
-        <h1 className="text-[20px] font-bold" style={{ color: 'var(--c-t1)' }}>{user.displayName}</h1>
-        <p className="text-[13px] mt-1" style={{ color: 'var(--c-t2)' }}>{user.email}</p>
-        <div className="flex items-center gap-2.5 mt-4 flex-wrap justify-center">
-          {rank != null && (
-            <span
-              className="text-[12px] font-bold px-3 py-1.5 rounded-full"
-              style={{ background: 'var(--c-gold-bg)', border: '1px solid var(--c-gold-bd)', color: 'var(--c-gold)' }}
-            >
-              Rank #{rank}
-            </span>
-          )}
-          {user.isAdmin && (
-            <span
-              className="text-[12px] font-bold px-3 py-1.5 rounded-full"
-              style={{ background: 'var(--c-primary-bg)', border: '1px solid var(--c-primary-bd)', color: 'var(--c-primary)' }}
-            >
-              Admin
-            </span>
-          )}
+    <div className="max-w-xl mx-auto px-4 py-7 space-y-5 animate-fade-in">
+
+      {/* ── Avatar + name ── */}
+      <div className="flex flex-col items-center gap-3 py-4">
+        {user.photoURL ? (
+          <img src={user.photoURL} alt={name}
+            className="w-20 h-20 rounded-full"
+            style={{ border: '3px solid var(--c-primary)' }} />
+        ) : (
+          <div className="w-20 h-20 rounded-full flex items-center justify-center text-3xl font-bold"
+            style={{ background: 'var(--c-primary)', color: '#fff' }}>
+            {name?.[0] || '?'}
+          </div>
+        )}
+        <div className="text-center">
+          <div className="text-[20px] font-bold" style={{ color: 'var(--c-t1)' }}>{name || 'Your Profile'}</div>
+          <div className="text-[13px] mt-0.5" style={{ color: 'var(--c-t3)' }}>{user.email}</div>
         </div>
       </div>
 
-      {/* Stats grid */}
-      <div className="grid grid-cols-2 gap-3">
-        {statItems.map((s) => (
-          <div
-            key={s.label}
-            className="rounded-2xl p-4 text-center"
-            style={{
-              background: 'var(--c-card)',
-              border: '1px solid var(--c-border)',
-              transition: 'background 0.2s, border-color 0.2s',
-            }}
-          >
-            <div className="text-[24px] font-bold" style={{ color: s.color }}>{s.value}</div>
-            <div className="text-[11px] mt-0.5 uppercase tracking-wide" style={{ color: 'var(--c-t3)' }}>
-              {s.label}
-            </div>
+      {/* ── Stats strip ── */}
+      <div className="grid grid-cols-4 gap-2">
+        {[
+          { label: 'Polls', value: total },
+          { label: 'Correct', value: correct },
+          { label: 'Points', value: points },
+          { label: 'Accuracy', value: `${accuracy}%` },
+        ].map(({ label, value }) => (
+          <div key={label} className="rounded-2xl p-3 text-center"
+            style={{ background: 'var(--c-card)', border: '1px solid var(--c-border)' }}>
+            <div className="text-[18px] font-bold" style={{ color: 'var(--c-primary)' }}>{value}</div>
+            <div className="text-[10px] mt-0.5" style={{ color: 'var(--c-t3)' }}>{label}</div>
           </div>
         ))}
       </div>
 
-      {/* Admin link */}
-      {user.isAdmin && (
-        <Link
-          to="/admin"
-          className="flex items-center justify-between w-full rounded-2xl px-5 py-4 transition-opacity hover:opacity-80"
-          style={{
-            background: 'var(--c-gold-bg)',
-            border: '1px solid var(--c-gold-bd)',
-            transition: 'background 0.2s, border-color 0.2s',
-          }}
-        >
-          <span className="text-[14px] font-semibold" style={{ color: 'var(--c-gold)' }}>⚙️ Admin Panel</span>
-          <span style={{ color: 'var(--c-gold)' }}>→</span>
-        </Link>
+      {/* ── Edit profile ── */}
+      <div className="rounded-2xl p-5 space-y-4"
+        style={{ background: 'var(--c-card)', border: '1px solid var(--c-border)' }}>
+        <div className="text-[13px] font-semibold" style={{ color: 'var(--c-t1)' }}>Profile Info</div>
+        <form onSubmit={handleSave} className="space-y-3">
+          <Field label="Display Name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" />
+          <Field label="Email" value={user.email} readOnly />
+          <Field label="Phone (optional)" value={phone} onChange={(e) => setPhone(e.target.value)}
+            type="tel" placeholder="+91 98765 43210" />
+          <Field label="Favourite Team" value={favoriteTeam} onChange={(e) => setFavoriteTeam(e.target.value)}
+            placeholder="e.g. Brazil" />
+          <Field label="Favourite Player" value={favoritePlayer} onChange={(e) => setFavoritePlayer(e.target.value)}
+            placeholder="e.g. Vinicius Jr" />
+          <button type="submit" disabled={saving}
+            className="w-full py-2.5 rounded-xl text-[13px] font-semibold transition-all disabled:opacity-50"
+            style={{ background: saved ? 'var(--c-green)' : 'var(--c-primary)', color: '#fff' }}>
+            {saving ? 'Saving…' : saved ? '✓ Saved!' : 'Save Changes'}
+          </button>
+        </form>
+      </div>
+
+      {/* ── Badges ── */}
+      {badges && (
+        <div className="rounded-2xl p-5 space-y-4"
+          style={{ background: 'var(--c-card)', border: '1px solid var(--c-border)' }}>
+          <div className="text-[13px] font-semibold" style={{ color: 'var(--c-t1)' }}>Badges & Fun Stats</div>
+          <div className="grid grid-cols-2 gap-3">
+            {BADGE_DEFS.map(({ key, emoji, label, unit, desc }) => {
+              const val = badges[key];
+              const earned = val > 0;
+              return (
+                <div key={key} className="rounded-xl p-3 flex flex-col gap-1"
+                  style={{
+                    background: earned ? 'var(--c-primary-bg)' : 'var(--c-surface)',
+                    border: `1px solid ${earned ? 'var(--c-primary-bd)' : 'var(--c-border)'}`,
+                    opacity: earned ? 1 : 0.45,
+                  }}>
+                  <div className="text-2xl">{emoji}</div>
+                  <div className="text-[12px] font-bold" style={{ color: earned ? 'var(--c-primary)' : 'var(--c-t2)' }}>
+                    {label}
+                  </div>
+                  <div className="text-[13px] font-semibold" style={{ color: 'var(--c-t1)' }}>
+                    {unit(val)}
+                  </div>
+                  <div className="text-[10px]" style={{ color: 'var(--c-t3)' }}>{desc}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       )}
 
-      {/* Sign out */}
-      <button
-        onClick={handleLogout}
-        className="w-full py-3.5 rounded-2xl text-[14px] font-semibold transition-all duration-200"
-        style={{ background: 'var(--c-red-bg)', border: '1px solid var(--c-red-bd)', color: 'var(--c-red)', opacity: 0.7 }}
-        onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; }}
-        onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.7'; }}
-      >
-        Sign Out
-      </button>
     </div>
   );
 }
