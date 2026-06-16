@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { getMatches, getUserPredictions } from '../firebase/services';
+import { useGroup } from '../contexts/GroupContext';
+import { getMatches, getUserPredictions, getAllPredictions, getGroupMembers } from '../firebase/services';
 import { formatKickoff, getFlag, getPredictionStatus } from '../utils/scoring';
 
 const FILTERS = ['all', 'correct', 'incorrect', 'pending'];
@@ -13,31 +14,52 @@ const STATUS_STYLE = {
 
 export default function MyPredictions() {
   const { user } = useAuth();
+  const { activeGroupId } = useGroup();
   const [items, setItems] = useState([]);
   const [filter, setFilter] = useState('all');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
-      const [allMatches, userPreds] = await Promise.all([
+      const [allMatches, userPreds, allPreds, groupMembers] = await Promise.all([
         getMatches(),
         getUserPredictions(user.uid),
+        getAllPredictions(),
+        activeGroupId ? getGroupMembers(activeGroupId) : Promise.resolve([]),
       ]);
+
+      // Pre-compute which matches have a group member prediction
+      const groupMemberIds = new Set(groupMembers.map((u) => u.uid || u.id));
+      const matchHasGroupPred = {};
+      if (activeGroupId) {
+        allPreds.forEach((p) => {
+          if (groupMemberIds.has(p.userId)) matchHasGroupPred[p.matchId] = true;
+        });
+      }
+
       const predMap = {};
       userPreds.forEach((p) => { predMap[p.matchId] = p; });
+
       const merged = allMatches
-        .filter((m) => predMap[m.id])
+        .filter((m) => {
+          if (!predMap[m.id]) return false; // must have user's prediction
+          if (!activeGroupId) return true;
+          if (m.status !== 'completed') return true; // upcoming/live always shown
+          if ((m.groupIds || []).includes(activeGroupId)) return true;
+          return !!matchHasGroupPred[m.id];
+        })
         .map((m) => ({
           match: m,
           prediction: predMap[m.id],
           status: getPredictionStatus(predMap[m.id]?.prediction, m),
         }))
         .reverse();
+
       setItems(merged);
       setLoading(false);
     }
     load();
-  }, []);
+  }, [activeGroupId]);
 
   if (loading) {
     return (
@@ -116,11 +138,7 @@ export default function MyPredictions() {
               <div
                 key={match.id}
                 className="rounded-2xl p-4"
-                style={{
-                  background: 'var(--c-card)',
-                  border: '1px solid var(--c-border)',
-                  transition: 'background 0.2s, border-color 0.2s',
-                }}
+                style={{ background: 'var(--c-card)', border: '1px solid var(--c-border)', transition: 'background 0.2s, border-color 0.2s' }}
               >
                 <div className="text-[13px] font-semibold mb-1" style={{ color: 'var(--c-t1)' }}>
                   {getFlag(match.homeTeam)} {match.homeTeam}
