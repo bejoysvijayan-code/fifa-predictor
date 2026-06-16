@@ -140,6 +140,13 @@ export default function Leaderboard() {
       ? users
       : users.filter((u) => (u.groupIds || []).includes(activeGroup));
 
+  // Only show groups the current user belongs to or admins
+  const currentUserData = users.find((u) => (u.uid || u.id) === user?.uid);
+  const myGroupIds = new Set(currentUserData?.groupIds || []);
+  const myGroups = groups.filter(
+    (g) => myGroupIds.has(g.id) || (g.adminIds || []).includes(user?.uid)
+  );
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
@@ -159,8 +166,8 @@ export default function Leaderboard() {
         </p>
       </div>
 
-      {/* Group tabs */}
-      {groups.length > 0 && (
+      {/* Group tabs — only groups the user belongs to or admins */}
+      {myGroups.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-5">
           <button
             onClick={() => setActiveGroup('all')}
@@ -171,7 +178,7 @@ export default function Leaderboard() {
           >
             All
           </button>
-          {groups.map((g) => (
+          {myGroups.map((g) => (
             <button key={g.id} onClick={() => setActiveGroup(g.id)}
               className="px-3 py-1.5 rounded-full text-[12px] font-medium transition-all"
               style={activeGroup === g.id
@@ -183,7 +190,7 @@ export default function Leaderboard() {
           ))}
           {/* Manage Members button — visible to group admins */}
           {activeGroup !== 'all' && (() => {
-            const activeGroupObj = groups.find((g) => g.id === activeGroup);
+            const activeGroupObj = myGroups.find((g) => g.id === activeGroup);
             const canManage = (activeGroupObj?.adminIds || []).includes(user?.uid);
             return canManage ? (
               <Link to={`/group-admin/${activeGroup}`}

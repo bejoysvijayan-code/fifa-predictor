@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
   getGroups, getGroupMembers, getAllUsers,
-  assignUserToGroup, removeUserFromGroup,
+  assignUserToGroup, removeUserFromGroup, setGroupAdmin,
 } from '../firebase/services';
 
 export default function GroupAdmin() {
@@ -28,7 +28,6 @@ export default function GroupAdmin() {
     const g = groups.find((x) => x.id === groupId);
     if (!g) { navigate('/'); return; }
 
-    // Only allow app admins or group admins
     const isGroupAdmin = (g.adminIds || []).includes(user.uid);
     if (!isGroupAdmin) { setUnauthorized(true); setLoading(false); return; }
 
@@ -41,7 +40,7 @@ export default function GroupAdmin() {
   useEffect(() => { load(); }, [groupId]);
 
   async function handleRemove(uid) {
-    setUpdating(uid);
+    setUpdating('remove_' + uid);
     await removeUserFromGroup(uid, groupId);
     setMembers((prev) => prev.filter((u) => (u.uid || u.id) !== uid));
     setUpdating(null);
@@ -49,11 +48,35 @@ export default function GroupAdmin() {
 
   async function handleAdd(u) {
     const uid = u.uid || u.id;
-    setUpdating(uid);
+    setUpdating('add_' + uid);
     await assignUserToGroup(uid, groupId);
     setMembers((prev) => [...prev, u]);
     setSearch('');
     setUpdating(null);
+  }
+
+  async function handleToggleAdmin(uid, currentlyAdmin) {
+    setUpdating('admin_' + uid);
+    await setGroupAdmin(groupId, uid, !currentlyAdmin);
+    setGroup((prev) => ({
+      ...prev,
+      adminIds: currentlyAdmin
+        ? (prev.adminIds || []).filter((id) => id !== uid)
+        : [...(prev.adminIds || []), uid],
+    }));
+    setUpdating(null);
+  }
+
+  async function handleLeave() {
+    const adminIds = group.adminIds || [];
+    const otherAdmins = adminIds.filter((id) => id !== user.uid);
+    if (otherAdmins.length === 0) {
+      alert('Please assign another Group Admin before leaving. The group must always have at least one admin.');
+      return;
+    }
+    if (!window.confirm('Remove yourself as Group Admin? You will lose access to manage this group.')) return;
+    await setGroupAdmin(groupId, user.uid, false);
+    navigate('/leaderboard');
   }
 
   const memberIds = new Set(members.map((u) => u.uid || u.id));
@@ -61,8 +84,7 @@ export default function GroupAdmin() {
   const searchResults = search.trim().length > 1
     ? allUsers.filter((u) => {
         const uid = u.uid || u.id;
-        return !memberIds.has(uid) &&
-          u.displayName?.toLowerCase().includes(search.toLowerCase());
+        return !memberIds.has(uid) && u.displayName?.toLowerCase().includes(search.toLowerCase());
       }).slice(0, 6)
     : [];
 
@@ -79,21 +101,33 @@ export default function GroupAdmin() {
     );
   }
 
+  const adminIds = group.adminIds || [];
+  const otherAdmins = adminIds.filter((id) => id !== user.uid);
+
   return (
     <div className="max-w-xl mx-auto px-4 py-7 space-y-5 animate-fade-in">
 
       {/* Header */}
-      <div>
-        <button onClick={() => navigate(-1)} className="text-[12px] mb-3 flex items-center gap-1"
-          style={{ color: 'var(--c-t3)' }}>
-          ← Back
+      <div className="flex items-start justify-between">
+        <div>
+          <button onClick={() => navigate(-1)} className="text-[12px] mb-3 flex items-center gap-1"
+            style={{ color: 'var(--c-t3)' }}>
+            ← Back
+          </button>
+          <h1 className="text-[22px] font-bold" style={{ color: 'var(--c-t1)' }}>{group.name}</h1>
+          <p className="text-[13px] mt-1" style={{ color: 'var(--c-t2)' }}>
+            {members.length} member{members.length !== 1 ? 's' : ''} · {adminIds.length} admin{adminIds.length !== 1 ? 's' : ''}
+          </p>
+        </div>
+        {/* Leave admin role */}
+        <button
+          onClick={handleLeave}
+          className="mt-8 px-3 py-1.5 rounded-xl text-[12px] font-medium"
+          style={{ background: 'rgba(239,68,68,0.08)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.2)' }}
+          title={otherAdmins.length === 0 ? 'Assign another admin first' : 'Leave admin role'}
+        >
+          Leave Admin
         </button>
-        <h1 className="text-[22px] font-bold" style={{ color: 'var(--c-t1)' }}>
-          {group.name}
-        </h1>
-        <p className="text-[13px] mt-1" style={{ color: 'var(--c-t2)' }}>
-          {members.length} member{members.length !== 1 ? 's' : ''}
-        </p>
       </div>
 
       {/* Add member */}
@@ -111,7 +145,7 @@ export default function GroupAdmin() {
           <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--c-border)' }}>
             {searchResults.map((u, i) => {
               const uid = u.uid || u.id;
-              const isUpdating = updating === uid;
+              const isUpdating = updating === 'add_' + uid;
               return (
                 <div key={uid} className="flex items-center gap-3 px-3 py-2.5"
                   style={{
@@ -137,43 +171,66 @@ export default function GroupAdmin() {
       </div>
 
       {/* Current members */}
-      <div className="rounded-2xl overflow-hidden"
-        style={{ border: '1px solid var(--c-border)' }}>
-        <div className="px-4 py-3 text-[13px] font-semibold" style={{ color: 'var(--c-t1)', background: 'var(--c-surface)' }}>
+      <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--c-border)' }}>
+        <div className="px-4 py-3 text-[13px] font-semibold"
+          style={{ color: 'var(--c-t1)', background: 'var(--c-surface)' }}>
           Current Members
         </div>
         {members.length === 0 ? (
           <div className="px-4 py-6 text-center text-[13px]" style={{ color: 'var(--c-t3)' }}>No members yet.</div>
         ) : (
-          members.map((u, i) => {
+          members.map((u) => {
             const uid = u.uid || u.id;
-            const isUpdating = updating === uid;
-            const isGroupAdm = (group.adminIds || []).includes(uid);
+            const isMe = uid === user.uid;
+            const isAdmin = adminIds.includes(uid);
+            const isRemoving = updating === 'remove_' + uid;
+            const isTogglingAdmin = updating === 'admin_' + uid;
+            const canRemoveAdmin = isAdmin && (otherAdmins.length > 0 || !isMe);
+
             return (
               <div key={uid} className="flex items-center gap-3 px-4 py-3"
-                style={{
-                  borderTop: '1px solid var(--c-border)',
-                  background: 'var(--c-card)',
-                }}>
+                style={{ borderTop: '1px solid var(--c-border)', background: 'var(--c-card)' }}>
                 {u.photoURL
                   ? <img src={u.photoURL} className="w-8 h-8 rounded-full flex-shrink-0" alt="" />
                   : <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
                       style={{ background: 'var(--c-primary)', color: '#fff' }}>{u.displayName?.[0]}</div>
                 }
                 <div className="flex-1 min-w-0">
-                  <div className="text-[13px] font-medium truncate" style={{ color: 'var(--c-t1)' }}>{u.displayName}</div>
-                  {isGroupAdm && <div className="text-[10px]" style={{ color: 'var(--c-gold)' }}>Group Admin</div>}
+                  <div className="text-[13px] font-medium truncate" style={{ color: 'var(--c-t1)' }}>
+                    {u.displayName}{isMe && <span className="text-[11px] ml-1" style={{ color: 'var(--c-t3)' }}>(you)</span>}
+                  </div>
+                  {isAdmin && <div className="text-[10px]" style={{ color: 'var(--c-gold)' }}>Group Admin</div>}
                 </div>
-                <button onClick={() => handleRemove(uid)} disabled={isUpdating}
-                  className="px-2.5 py-1 rounded-lg text-[12px] disabled:opacity-50"
-                  style={{ background: 'rgba(239,68,68,0.1)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.2)' }}>
-                  {isUpdating ? '…' : 'Remove'}
-                </button>
+
+                {/* Make / Remove Admin */}
+                {!isMe && (
+                  <button
+                    disabled={isTogglingAdmin}
+                    onClick={() => handleToggleAdmin(uid, isAdmin)}
+                    className="px-2.5 py-1 rounded-lg text-[11px] font-medium disabled:opacity-50"
+                    style={isAdmin
+                      ? { background: 'rgba(239,68,68,0.08)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.2)' }
+                      : { background: 'var(--c-gold-bg)', color: 'var(--c-gold)', border: '1px solid var(--c-gold-bd)' }
+                    }
+                  >
+                    {isTogglingAdmin ? '…' : isAdmin ? 'Remove Admin' : 'Make Admin'}
+                  </button>
+                )}
+
+                {/* Remove from group — don't allow removing yourself */}
+                {!isMe && (
+                  <button onClick={() => handleRemove(uid)} disabled={isRemoving}
+                    className="px-2.5 py-1 rounded-lg text-[12px] disabled:opacity-50"
+                    style={{ background: 'rgba(239,68,68,0.08)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.2)' }}>
+                    {isRemoving ? '…' : 'Remove'}
+                  </button>
+                )}
               </div>
             );
           })
         )}
       </div>
+
     </div>
   );
 }
