@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { getAllUsers, getGroups, getAllPredictions, getMatches } from '../firebase/services';
+import { useGroup } from '../contexts/GroupContext';
+import { getAllUsers, getAllPredictions, getMatches } from '../firebase/services';
 import LeaderboardTable from '../components/LeaderboardTable';
 import { sortLeaderboard } from '../utils/scoring';
 
@@ -10,7 +11,6 @@ function GroupTrivia({ members, allPreds, allMatches }) {
 
   const memberIds = new Set(members.map((u) => u.uid || u.id));
 
-  // Match map + majority per match
   const matchMap = {};
   allMatches.forEach((m) => { matchMap[m.id] = m; });
 
@@ -20,14 +20,12 @@ function GroupTrivia({ members, allPreds, allMatches }) {
     predCounts[p.matchId][p.prediction] = (predCounts[p.matchId][p.prediction] || 0) + 1;
   });
 
-  // Per-member stats
   const stats = {};
   members.forEach((u) => {
     const uid = u.uid || u.id;
     stats[uid] = { uid, name: u.displayName, nightOwl: 0, trigger: 0, contrarian: 0 };
   });
 
-  // Earliest prediction per match (among ALL users)
   const firstPred = {};
   allPreds.forEach((p) => {
     if (!p.predictionTime) return;
@@ -42,16 +40,13 @@ function GroupTrivia({ members, allPreds, allMatches }) {
     const s = stats[p.userId];
     if (!s) return;
 
-    // Night owl
     const raw = p.predictionTime || p.timestamp;
     if (raw) {
       const t = raw.toDate ? raw.toDate() : new Date(raw);
       const h = t.getHours();
       if (h >= 22 || h < 6) s.nightOwl++;
     }
-    // Trigger finger
     if (firstPred[p.matchId]?.uid === p.userId) s.trigger++;
-    // Contrarian
     const counts = predCounts[p.matchId];
     if (counts) {
       const majority = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0];
@@ -67,7 +62,6 @@ function GroupTrivia({ members, allPreds, allMatches }) {
     return { name: top.name?.split(' ')[0], value: format(top[key]) };
   }
 
-  // Most popular team among group members (from ALL their predictions)
   const teamVotes = {};
   allPreds.forEach((p) => {
     if (!memberIds.has(p.userId)) return;
@@ -113,51 +107,31 @@ function GroupTrivia({ members, allPreds, allMatches }) {
 
 export default function Leaderboard() {
   const { user } = useAuth();
+  const { activeGroup, activeGroupId } = useGroup();
   const [users, setUsers] = useState([]);
-  const [groups, setGroups] = useState([]);
   const [allPreds, setAllPreds] = useState([]);
   const [allMatches, setAllMatches] = useState([]);
-  const [activeGroup, setActiveGroup] = useState('all');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([
       getAllUsers().then((all) => all.filter((u) => !u.hideFromLeaderboard)),
-      getGroups(),
       getAllPredictions(),
       getMatches(),
-    ]).then(([visibleUsers, allGroups, preds, matches]) => {
-      setUsers(visibleUsers);
-      setGroups(allGroups);
+    ]).then(([allUsers, preds, matches]) => {
+      setUsers(allUsers);
       setAllPreds(preds);
       setAllMatches(matches);
       setLoading(false);
     });
   }, []);
 
-  // Groups visible to current user: member of OR admin of
-  const currentUserData = users.find((u) => (u.uid || u.id) === user?.uid);
-  const myMemberGroupIds = new Set(currentUserData?.groupIds || []);
-  const isAppAdmin = !!user?.isAdmin;
-  const myGroups = groups.filter(
-    (g) => myMemberGroupIds.has(g.id) || (g.adminIds || []).includes(user?.uid)
-  );
-  // Effective = member + admin (handles admins who aren't formally "members" yet in old data)
-  const myEffectiveGroupIds = new Set(myGroups.map((g) => g.id));
+  // Filter to active group's members (app admin with no group sees all)
+  const groupMembers = activeGroupId
+    ? users.filter((u) => (u.groupIds || []).includes(activeGroupId))
+    : users;
 
-  // "All" tab: only show users in any of the current user's effective groups
-  const allTabUsers = isAppAdmin
-    ? users
-    : users.filter((u) => {
-        const uid = u.uid || u.id;
-        if (uid === user?.uid) return true;
-        return (u.groupIds || []).some((gid) => myEffectiveGroupIds.has(gid));
-      });
-
-  const filteredUsers =
-    activeGroup === 'all'
-      ? allTabUsers
-      : users.filter((u) => (u.groupIds || []).includes(activeGroup));
+  const isGroupAdmin = (activeGroup?.adminIds || []).includes(user?.uid);
 
   if (loading) {
     return (
@@ -167,77 +141,29 @@ export default function Leaderboard() {
     );
   }
 
-  // No groups yet — waiting screen
-  if (!isAppAdmin && myEffectiveGroupIds.size === 0) {
-    return (
-      <div className="max-w-2xl mx-auto px-4 py-7 animate-fade-in">
-        <h1 className="text-[26px] font-bold tracking-tight mb-8" style={{ color: 'var(--c-t1)' }}>Leaderboard</h1>
-        <div className="rounded-2xl p-8 text-center space-y-3"
-          style={{ background: 'var(--c-card)', border: '1px solid var(--c-border)' }}>
-          <div className="text-4xl">👋</div>
-          <div className="text-[15px] font-semibold" style={{ color: 'var(--c-t1)' }}>You're not in a group yet</div>
-          <p className="text-[13px]" style={{ color: 'var(--c-t2)' }}>
-            Ask your group admin to add you. Once added, you'll see your group's leaderboard here.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="max-w-2xl mx-auto px-4 py-7 animate-fade-in">
-      <div className="mb-5">
-        <h1 className="text-[26px] font-bold tracking-tight" style={{ color: 'var(--c-t1)' }}>
-          Leaderboard
-        </h1>
-        <p className="text-[13px] mt-1" style={{ color: 'var(--c-t2)' }}>
-          Ranked by correct picks · accuracy · points
-        </p>
+      <div className="mb-5 flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-[26px] font-bold tracking-tight" style={{ color: 'var(--c-t1)' }}>
+            Leaderboard
+          </h1>
+          <p className="text-[13px] mt-1" style={{ color: 'var(--c-t2)' }}>
+            {activeGroup ? activeGroup.name : 'All members'} · {groupMembers.length} player{groupMembers.length !== 1 ? 's' : ''}
+          </p>
+        </div>
+        {isGroupAdmin && activeGroupId && (
+          <Link to={`/group-admin/${activeGroupId}`}
+            className="px-3 py-1.5 rounded-full text-[12px] font-medium flex-shrink-0 mt-1"
+            style={{ background: 'var(--c-gold-bg)', color: 'var(--c-gold)', border: '1px solid var(--c-gold-bd)' }}>
+            ⚙️ Manage Members
+          </Link>
+        )}
       </div>
 
-      {/* Group tabs — only groups the user belongs to or admins */}
-      {myGroups.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-5">
-          <button
-            onClick={() => setActiveGroup('all')}
-            className="px-3 py-1.5 rounded-full text-[12px] font-medium transition-all"
-            style={activeGroup === 'all'
-              ? { background: 'var(--c-primary)', color: '#fff' }
-              : { background: 'var(--c-surface)', color: 'var(--c-t2)', border: '1px solid var(--c-border)' }}
-          >
-            All
-          </button>
-          {myGroups.map((g) => (
-            <button key={g.id} onClick={() => setActiveGroup(g.id)}
-              className="px-3 py-1.5 rounded-full text-[12px] font-medium transition-all"
-              style={activeGroup === g.id
-                ? { background: 'var(--c-primary)', color: '#fff' }
-                : { background: 'var(--c-surface)', color: 'var(--c-t2)', border: '1px solid var(--c-border)' }}
-            >
-              {g.name}
-            </button>
-          ))}
-          {/* Manage Members button — visible to group admins */}
-          {activeGroup !== 'all' && (() => {
-            const activeGroupObj = myGroups.find((g) => g.id === activeGroup);
-            const canManage = (activeGroupObj?.adminIds || []).includes(user?.uid);
-            return canManage ? (
-              <Link to={`/group-admin/${activeGroup}`}
-                className="px-3 py-1.5 rounded-full text-[12px] font-medium"
-                style={{ background: 'var(--c-gold-bg)', color: 'var(--c-gold)', border: '1px solid var(--c-gold-bd)' }}>
-                ⚙️ Manage Members
-              </Link>
-            ) : null;
-          })()}
-        </div>
-      )}
+      <LeaderboardTable users={groupMembers} />
 
-      <LeaderboardTable users={filteredUsers} />
-
-      {/* Group trivia — only when a specific group is selected */}
-      {activeGroup !== 'all' && (
-        <GroupTrivia members={filteredUsers} allPreds={allPreds} allMatches={allMatches} />
-      )}
+      <GroupTrivia members={groupMembers} allPreds={allPreds} allMatches={allMatches} />
     </div>
   );
 }

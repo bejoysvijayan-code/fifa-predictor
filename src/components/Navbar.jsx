@@ -1,5 +1,6 @@
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useGroup } from '../contexts/GroupContext';
 import ThemeToggle from './ThemeToggle';
 
 function IconHome() {
@@ -39,6 +40,13 @@ function IconUser() {
     </svg>
   );
 }
+function IconSwitch() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4" />
+    </svg>
+  );
+}
 
 const TABS = [
   { to: '/', label: 'Home', Icon: IconHome },
@@ -50,11 +58,10 @@ const TABS = [
 
 export default function Navbar() {
   const { user, logout } = useAuth();
+  const { activeGroup, myGroups } = useGroup();
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Navbar is only rendered inside <Layout> (authenticated pages).
-  // This guard prevents any crash if auth state hasn't resolved yet.
   if (!user) return null;
 
   async function handleLogout() {
@@ -66,82 +73,97 @@ export default function Navbar() {
     return path === '/' ? location.pathname === '/' : location.pathname.startsWith(path);
   }
 
+  function handleSwitchGroup() {
+    if (myGroups.length > 1) {
+      navigate('/choose-group', { state: { switching: true } });
+    }
+  }
+
   const avatar = user?.photoURL ? (
-    <img
-      src={user.photoURL}
-      alt={user.displayName}
-      className="w-8 h-8 rounded-full"
-      style={{ border: '2px solid var(--c-border-s)' }}
-    />
+    <img src={user.photoURL} alt={user.displayName} className="w-8 h-8 rounded-full"
+      style={{ border: '2px solid var(--c-border-s)' }} />
   ) : (
-    <div
-      className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold"
-      style={{ background: 'var(--c-primary)', color: '#fff' }}
-    >
+    <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold"
+      style={{ background: 'var(--c-primary)', color: '#fff' }}>
       {user?.displayName?.[0] || '?'}
     </div>
   );
+
+  const groupPill = activeGroup ? (
+    <button
+      onClick={handleSwitchGroup}
+      className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-medium transition-all"
+      style={{
+        background: 'var(--c-primary-bg)',
+        color: 'var(--c-primary)',
+        border: '1px solid var(--c-primary-bd)',
+        cursor: myGroups.length > 1 ? 'pointer' : 'default',
+        maxWidth: '160px',
+      }}
+      title={myGroups.length > 1 ? 'Switch group' : activeGroup.name}
+    >
+      <span className="truncate">{activeGroup.name}</span>
+      {myGroups.length > 1 && <span className="flex-shrink-0"><IconSwitch /></span>}
+    </button>
+  ) : null;
 
   return (
     <>
       {/* ── Top bar ─────────────────────────────── */}
       <nav className="glass sticky top-0 z-50">
-        <div className="max-w-4xl mx-auto px-4 flex items-center justify-between h-14">
+        <div className="max-w-4xl mx-auto px-4 flex items-center h-14 gap-3">
+
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2.5">
-            <div
-              className="w-8 h-8 rounded-xl flex items-center justify-center text-base flex-shrink-0"
-              style={{ background: 'linear-gradient(135deg, #5B6CF8, #8B5CF6)' }}
-            >
+          <Link to="/" className="flex items-center gap-2 flex-shrink-0">
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center text-base flex-shrink-0"
+              style={{ background: 'linear-gradient(135deg, #5B6CF8, #8B5CF6)' }}>
               ⚽
             </div>
-            <span className="font-bold text-[15px] tracking-tight hidden sm:inline" style={{ color: 'var(--c-t1)' }}>
-              JNVN98: FIFA Arena
+            <span className="font-bold text-[15px] tracking-tight hidden md:inline" style={{ color: 'var(--c-t1)' }}>
+              FIFA Arena
             </span>
           </Link>
 
+          {/* Group pill — shows on all screen sizes */}
+          {groupPill}
+
           {/* Desktop nav links */}
-          <div className="hidden md:flex items-center gap-0.5">
+          <div className="hidden md:flex items-center gap-0.5 ml-2">
             {TABS.slice(0, -1).map(({ to, label }) => (
-              <NavLink
-                key={to}
-                to={to}
-                end={to === '/'}
+              <NavLink key={to} to={to} end={to === '/'}
                 className="px-3 py-2 rounded-xl text-[13px] font-medium transition-all duration-150"
                 style={({ isActive }) => ({
                   color: isActive ? 'var(--c-primary)' : 'var(--c-t2)',
                   background: isActive ? 'var(--c-primary-bg)' : 'transparent',
-                })}
-              >
+                })}>
                 {label}
               </NavLink>
             ))}
             {user?.isAdmin && (
-              <NavLink
-                to="/admin"
+              <NavLink to="/admin"
                 className="px-3 py-2 rounded-xl text-[13px] font-medium transition-all duration-150"
                 style={({ isActive }) => ({
                   color: 'var(--c-gold)',
                   background: isActive ? 'var(--c-gold-bg)' : 'transparent',
                   opacity: isActive ? 1 : 0.65,
-                })}
-              >
+                })}>
                 Admin
               </NavLink>
             )}
           </div>
 
+          {/* Spacer */}
+          <div className="flex-1" />
+
           {/* Desktop: theme toggle + avatar + logout */}
           <div className="hidden md:flex items-center gap-2">
             <ThemeToggle />
             <NavLink to="/profile">{avatar}</NavLink>
-            <button
-              onClick={handleLogout}
+            <button onClick={handleLogout}
               className="text-[12px] font-medium px-2 py-1 rounded-lg transition-colors"
               style={{ color: 'var(--c-t3)' }}
               onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--c-red)')}
-              onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--c-t3)')}
-            >
+              onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--c-t3)')}>
               Logout
             </button>
           </div>
@@ -155,8 +177,7 @@ export default function Navbar() {
       </nav>
 
       {/* ── Mobile bottom tab bar ─────────────────── */}
-      <div
-        className="md:hidden fixed bottom-0 left-0 right-0 z-50"
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50"
         style={{
           background: 'var(--c-nav)',
           backdropFilter: 'blur(20px)',
@@ -164,25 +185,17 @@ export default function Navbar() {
           borderTop: '1px solid var(--c-nav-bd)',
           paddingBottom: 'env(safe-area-inset-bottom, 0px)',
           transition: 'background 0.2s ease, border-color 0.2s ease',
-        }}
-      >
+        }}>
         <div className="flex">
           {TABS.map(({ to, label, Icon }) => {
             const active = isTabActive(to);
             return (
-              <Link
-                key={to}
-                to={to}
+              <Link key={to} to={to}
                 className="flex-1 flex flex-col items-center justify-center py-3 gap-1"
-                style={{ transition: 'color 0.15s' }}
-              >
-                <span style={{ color: active ? 'var(--c-primary)' : 'var(--c-t3)' }}>
-                  <Icon />
-                </span>
-                <span
-                  className="text-[10px] font-medium"
-                  style={{ color: active ? 'var(--c-primary)' : 'var(--c-t3)' }}
-                >
+                style={{ transition: 'color 0.15s' }}>
+                <span style={{ color: active ? 'var(--c-primary)' : 'var(--c-t3)' }}><Icon /></span>
+                <span className="text-[10px] font-medium"
+                  style={{ color: active ? 'var(--c-primary)' : 'var(--c-t3)' }}>
                   {label}
                 </span>
               </Link>

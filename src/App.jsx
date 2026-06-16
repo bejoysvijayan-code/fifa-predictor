@@ -1,10 +1,10 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { GroupProvider, useGroup } from './contexts/GroupContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Navbar from './components/Navbar';
 
-import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Matches from './pages/Matches';
@@ -12,9 +12,25 @@ import MyPredictions from './pages/MyPredictions';
 import Leaderboard from './pages/Leaderboard';
 import Profile from './pages/Profile';
 import GroupAdmin from './pages/GroupAdmin';
+import GroupSelect from './pages/GroupSelect';
 import AdminPanel from './pages/admin/AdminPanel';
 
 function Layout({ children }) {
+  const { user } = useAuth();
+  const { myGroups, activeGroup, loading: groupLoading } = useGroup();
+  const location = useLocation();
+
+  // Redirect to group chooser if user has multiple groups but hasn't selected one
+  if (
+    !groupLoading &&
+    !user?.isAdmin &&
+    myGroups.length > 1 &&
+    !activeGroup &&
+    location.pathname !== '/choose-group'
+  ) {
+    return <Navigate to="/choose-group" replace />;
+  }
+
   return (
     <div className="min-h-screen" style={{ background: 'var(--c-page)', transition: 'background 0.2s ease' }}>
       <Navbar />
@@ -23,16 +39,13 @@ function Layout({ children }) {
   );
 }
 
-// Shows Landing page for guests, Dashboard for authenticated users
 function SmartRoot() {
-  const { user, loading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const { loading: groupLoading } = useGroup();
 
-  if (loading) {
+  if (authLoading || groupLoading) {
     return (
-      <div
-        className="flex items-center justify-center min-h-screen"
-        style={{ background: 'var(--c-page)' }}
-      >
+      <div className="flex items-center justify-center min-h-screen" style={{ background: 'var(--c-page)' }}>
         <div className="spinner" style={{ width: 36, height: 36 }} />
       </div>
     );
@@ -46,26 +59,28 @@ export default function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <BrowserRouter basename={import.meta.env.BASE_URL}>
-          <Routes>
-            {/* Public root — Landing for guests, Dashboard for logged-in */}
-            <Route path="/" element={<SmartRoot />} />
+        <GroupProvider>
+          <BrowserRouter basename={import.meta.env.BASE_URL}>
+            <Routes>
+              <Route path="/" element={<SmartRoot />} />
+              <Route path="/login" element={<Login />} />
 
-            {/* Auth page */}
-            <Route path="/login" element={<Login />} />
+              {/* Group chooser — protected but no Layout (full-screen standalone) */}
+              <Route path="/choose-group" element={<ProtectedRoute><GroupSelect /></ProtectedRoute>} />
 
-            {/* Protected pages */}
-            <Route path="/matches"        element={<ProtectedRoute><Layout><Matches /></Layout></ProtectedRoute>} />
-            <Route path="/my-predictions" element={<ProtectedRoute><Layout><MyPredictions /></Layout></ProtectedRoute>} />
-            <Route path="/leaderboard"    element={<ProtectedRoute><Layout><Leaderboard /></Layout></ProtectedRoute>} />
-            <Route path="/profile"         element={<ProtectedRoute><Layout><Profile /></Layout></ProtectedRoute>} />
-            <Route path="/profile/:uid"      element={<ProtectedRoute><Layout><Profile /></Layout></ProtectedRoute>} />
-            <Route path="/group-admin/:groupId" element={<ProtectedRoute><Layout><GroupAdmin /></Layout></ProtectedRoute>} />
-            <Route path="/admin"          element={<ProtectedRoute adminOnly><Layout><AdminPanel /></Layout></ProtectedRoute>} />
+              {/* Protected pages inside Layout */}
+              <Route path="/matches"              element={<ProtectedRoute><Layout><Matches /></Layout></ProtectedRoute>} />
+              <Route path="/my-predictions"       element={<ProtectedRoute><Layout><MyPredictions /></Layout></ProtectedRoute>} />
+              <Route path="/leaderboard"          element={<ProtectedRoute><Layout><Leaderboard /></Layout></ProtectedRoute>} />
+              <Route path="/profile"              element={<ProtectedRoute><Layout><Profile /></Layout></ProtectedRoute>} />
+              <Route path="/profile/:uid"         element={<ProtectedRoute><Layout><Profile /></Layout></ProtectedRoute>} />
+              <Route path="/group-admin/:groupId" element={<ProtectedRoute><Layout><GroupAdmin /></Layout></ProtectedRoute>} />
+              <Route path="/admin"                element={<ProtectedRoute adminOnly><Layout><AdminPanel /></Layout></ProtectedRoute>} />
 
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </BrowserRouter>
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </BrowserRouter>
+        </GroupProvider>
       </AuthProvider>
     </ThemeProvider>
   );
