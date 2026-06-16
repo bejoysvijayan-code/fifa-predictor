@@ -42,10 +42,10 @@ export default function MyPredictions() {
 
       const merged = allMatches
         .filter((m) => {
-          if (!predMap[m.id]) return false; // must have user's prediction
-          if (!activeGroupId) return true;
+          if (!predMap[m.id]) return false;
+          if (!activeGroupId) return !!user?.isAdmin;
           if (m.groupIds?.length > 0) return m.groupIds.includes(activeGroupId);
-          if (m.status !== 'completed') return true; // untagged upcoming = global
+          if (m.status !== 'completed') return true;
           return !!matchHasGroupPred[m.id];
         })
         .map((m) => ({

@@ -59,11 +59,12 @@ export default function Matches() {
   }
 
   // Group-scoped match list:
-  // - tagged matches (any status): only show in their group
+  // - no active group (non-admin): show nothing
+  // - tagged matches: only show in their group
   // - untagged upcoming/live: global (show to all active users)
-  // - untagged completed: use prediction-based group check
+  // - untagged completed: prediction-based group check
   const groupMatches = matches.filter((m) => {
-    if (!activeGroupId) return true;
+    if (!activeGroupId) return !!user?.isAdmin; // non-admin with no group sees nothing
     if (m.groupIds?.length > 0) return m.groupIds.includes(activeGroupId);
     if (m.status !== 'completed') return true;
     return !!matchHasGroupPred[m.id];
