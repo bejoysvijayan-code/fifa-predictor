@@ -104,6 +104,7 @@ export async function addPredictionsToExistingMatch(matchId, kickoffTime, winner
   batch.update(doc(db, 'matches', matchId), {
     result: { winner },
     status: 'completed',
+    ...(groupId ? { groupIds: arrayUnion(groupId) } : {}),
   });
 
   // Resolve / create users then add predictions
@@ -224,6 +225,7 @@ export async function importHistoricalMatch({ matchNumber, homeTeam, awayTeam, k
     kickoffTime,
     status: 'completed',
     result: { winner },
+    groupIds: groupId ? [groupId] : [],
     createdAt: serverTimestamp(),
   });
 

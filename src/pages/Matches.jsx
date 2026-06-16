@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { getMatches, getUserPredictions, getAllPredictions } from '../firebase/services';
+import { useGroup } from '../contexts/GroupContext';
+import { getMatches, getUserPredictions, getAllPredictions, getGroupMembers } from '../firebase/services';
 import MatchCard from '../components/MatchCard';
 
 const FILTERS = [
@@ -12,23 +13,30 @@ const FILTERS = [
 
 export default function Matches() {
   const { user } = useAuth();
+  const { activeGroupId } = useGroup();
   const [matches, setMatches] = useState([]);
+  const [allPreds, setAllPreds] = useState([]);
   const [predictions, setPredictions] = useState([]);
   const [predCounts, setPredCounts] = useState({});
+  const [groupMemberIds, setGroupMemberIds] = useState(new Set());
   const [filter, setFilter] = useState('all');
   const [loading, setLoading] = useState(true);
 
   async function load() {
-    const [allMatches, userPreds, allPreds] = await Promise.all([
+    const [allMatches, userPreds, allPredsData, groupMembers] = await Promise.all([
       getMatches(),
       getUserPredictions(user.uid),
       getAllPredictions(),
+      activeGroupId ? getGroupMembers(activeGroupId) : Promise.resolve([]),
     ]);
+
     setMatches(allMatches);
     setPredictions(userPreds);
+    setAllPreds(allPredsData);
+    setGroupMemberIds(new Set(groupMembers.map((u) => u.uid || u.id)));
 
     const counts = {};
-    allPreds.forEach((p) => {
+    allPredsData.forEach((p) => {
       if (!counts[p.matchId]) counts[p.matchId] = {};
       counts[p.matchId][p.prediction] = (counts[p.matchId][p.prediction] || 0) + 1;
     });
@@ -37,19 +45,37 @@ export default function Matches() {
     setLoading(false);
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [activeGroupId]);
 
   const predMap = {};
   predictions.forEach((p) => { predMap[p.matchId] = p; });
 
+  // Pre-compute: which matches have at least one prediction from a group member
+  const matchHasGroupPred = {};
+  if (activeGroupId) {
+    allPreds.forEach((p) => {
+      if (groupMemberIds.has(p.userId)) matchHasGroupPred[p.matchId] = true;
+    });
+  }
+
+  // Group-scoped match list:
+  // - upcoming/live: always show (global polls everyone can predict on)
+  // - completed: show only if match is tagged to this group OR a group member predicted it
+  const groupMatches = matches.filter((m) => {
+    if (!activeGroupId) return true;
+    if (m.status !== 'completed') return true;
+    if ((m.groupIds || []).includes(activeGroupId)) return true;
+    return !!matchHasGroupPred[m.id];
+  });
+
   const counts = {
-    all: matches.length,
-    upcoming: matches.filter((m) => m.status === 'upcoming').length,
-    live: matches.filter((m) => m.status === 'live').length,
-    completed: matches.filter((m) => m.status === 'completed').length,
+    all: groupMatches.length,
+    upcoming: groupMatches.filter((m) => m.status === 'upcoming').length,
+    live: groupMatches.filter((m) => m.status === 'live').length,
+    completed: groupMatches.filter((m) => m.status === 'completed').length,
   };
 
-  const filtered = filter === 'all' ? matches : matches.filter((m) => m.status === filter);
+  const filtered = filter === 'all' ? groupMatches : groupMatches.filter((m) => m.status === filter);
 
   if (loading) {
     return (
