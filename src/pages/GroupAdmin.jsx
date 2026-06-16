@@ -30,7 +30,7 @@ export default function GroupAdmin() {
 
     // Only allow app admins or group admins
     const isGroupAdmin = (g.adminIds || []).includes(user.uid);
-    if (!user.isAdmin && !isGroupAdmin) { setUnauthorized(true); setLoading(false); return; }
+    if (!isGroupAdmin) { setUnauthorized(true); setLoading(false); return; }
 
     setGroup(g);
     setMembers(groupMembers);

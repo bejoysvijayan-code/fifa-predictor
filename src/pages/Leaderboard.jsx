@@ -184,7 +184,7 @@ export default function Leaderboard() {
           {/* Manage Members button — visible to group admins */}
           {activeGroup !== 'all' && (() => {
             const activeGroupObj = groups.find((g) => g.id === activeGroup);
-            const canManage = user?.isAdmin || (activeGroupObj?.adminIds || []).includes(user?.uid);
+            const canManage = (activeGroupObj?.adminIds || []).includes(user?.uid);
             return canManage ? (
               <Link to={`/group-admin/${activeGroup}`}
                 className="px-3 py-1.5 rounded-full text-[12px] font-medium"
