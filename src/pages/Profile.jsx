@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
-  getUser, updateUserProfile, getUserPredictions, getMatches, getAllPredictions,
+  getUser, updateUserProfile, getUserPredictions, getMatches, getAllPredictions, getGroups,
 } from '../firebase/services';
 
 // ── Badge computation ──────────────────────────────────
@@ -121,11 +121,16 @@ export default function Profile() {
       getMatches(),
       getAllPredictions(),
       needsAccessCheck ? getUser(user.uid) : Promise.resolve(null),
-    ]).then(([userData, userPreds, allMatches, allPreds, meData]) => {
+      needsAccessCheck ? getGroups() : Promise.resolve([]),
+    ]).then(([userData, userPreds, allMatches, allPreds, meData, allGroups]) => {
       if (needsAccessCheck) {
         const targetGroups = new Set(userData?.groupIds || []);
-        const myGroups = meData?.groupIds || [];
-        if (!myGroups.some((gid) => targetGroups.has(gid))) {
+        const myMemberGroups = new Set(meData?.groupIds || []);
+        const myAdminGroups = new Set(
+          allGroups.filter((g) => (g.adminIds || []).includes(user.uid)).map((g) => g.id)
+        );
+        const myEffective = new Set([...myMemberGroups, ...myAdminGroups]);
+        if (![...targetGroups].some((gid) => myEffective.has(gid))) {
           setAccessDenied(true);
           setLoading(false);
           return;

@@ -135,21 +135,23 @@ export default function Leaderboard() {
     });
   }, []);
 
-  // Only show groups the current user belongs to or admins
+  // Groups visible to current user: member of OR admin of
   const currentUserData = users.find((u) => (u.uid || u.id) === user?.uid);
-  const myGroupIds = new Set(currentUserData?.groupIds || []);
+  const myMemberGroupIds = new Set(currentUserData?.groupIds || []);
   const isAppAdmin = !!user?.isAdmin;
   const myGroups = groups.filter(
-    (g) => myGroupIds.has(g.id) || (g.adminIds || []).includes(user?.uid)
+    (g) => myMemberGroupIds.has(g.id) || (g.adminIds || []).includes(user?.uid)
   );
+  // Effective = member + admin (handles admins who aren't formally "members" yet in old data)
+  const myEffectiveGroupIds = new Set(myGroups.map((g) => g.id));
 
-  // "All" tab: only show users sharing a group with the current user (admins see everyone)
+  // "All" tab: only show users in any of the current user's effective groups
   const allTabUsers = isAppAdmin
     ? users
     : users.filter((u) => {
         const uid = u.uid || u.id;
         if (uid === user?.uid) return true;
-        return (u.groupIds || []).some((gid) => myGroupIds.has(gid));
+        return (u.groupIds || []).some((gid) => myEffectiveGroupIds.has(gid));
       });
 
   const filteredUsers =
@@ -166,7 +168,7 @@ export default function Leaderboard() {
   }
 
   // No groups yet — waiting screen
-  if (!isAppAdmin && myGroupIds.size === 0) {
+  if (!isAppAdmin && myEffectiveGroupIds.size === 0) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-7 animate-fade-in">
         <h1 className="text-[26px] font-bold tracking-tight mb-8" style={{ color: 'var(--c-t1)' }}>Leaderboard</h1>

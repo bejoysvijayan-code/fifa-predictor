@@ -417,9 +417,16 @@ export async function removeUserFromGroup(userId, groupId) {
 }
 
 export async function setGroupAdmin(groupId, userId, isAdmin) {
-  await updateDoc(doc(db, 'groups', groupId), {
-    adminIds: isAdmin ? arrayUnion(userId) : arrayRemove(userId),
-  });
+  if (isAdmin) {
+    // Making someone admin also ensures they're a member of the group
+    await Promise.all([
+      updateDoc(doc(db, 'groups', groupId), { adminIds: arrayUnion(userId) }),
+      updateDoc(doc(db, 'users', userId), { groupIds: arrayUnion(groupId) }),
+    ]);
+  } else {
+    // Removing admin role keeps them as a member
+    await updateDoc(doc(db, 'groups', groupId), { adminIds: arrayRemove(userId) });
+  }
 }
 
 export async function getGroupMembers(groupId) {
