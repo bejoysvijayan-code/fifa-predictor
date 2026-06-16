@@ -97,7 +97,7 @@ export async function deleteMatch(matchId) {
 }
 
 // Add participant predictions to an existing match + set its result
-export async function addPredictionsToExistingMatch(matchId, kickoffTime, winner, participants) {
+export async function addPredictionsToExistingMatch(matchId, kickoffTime, winner, participants, groupId = null) {
   const batch = writeBatch(db);
 
   // Update match result and status
@@ -113,6 +113,7 @@ export async function addPredictionsToExistingMatch(matchId, kickoffTime, winner
     let userId;
     if (existing) {
       userId = existing.uid || existing.id;
+      if (groupId) batch.update(doc(db, 'users', userId), { groupIds: arrayUnion(groupId) });
     } else {
       const uid = 'participant_' + name.toLowerCase().replace(/\s+/g, '_') + '_' + Date.now();
       userId = uid;
@@ -127,6 +128,7 @@ export async function addPredictionsToExistingMatch(matchId, kickoffTime, winner
         accuracyPercentage: 0,
         totalPoints: 0,
         isManual: true,
+        groupIds: groupId ? [groupId] : [],
         createdAt: serverTimestamp(),
       });
     }
@@ -210,7 +212,7 @@ export async function findUserByName(displayName) {
 
 // ── Import Historical Match ────────────────────────────
 
-export async function importHistoricalMatch({ matchNumber, homeTeam, awayTeam, kickoffTime, winner, participants }) {
+export async function importHistoricalMatch({ matchNumber, homeTeam, awayTeam, kickoffTime, winner, participants, groupId = null }) {
   const batch = writeBatch(db);
 
   // Create the match doc
@@ -232,6 +234,7 @@ export async function importHistoricalMatch({ matchNumber, homeTeam, awayTeam, k
     let userId;
     if (existing) {
       userId = existing.uid || existing.id;
+      if (groupId) batch.update(doc(db, 'users', userId), { groupIds: arrayUnion(groupId) });
     } else {
       const uid = 'participant_' + name.toLowerCase().replace(/\s+/g, '_') + '_' + Date.now();
       userId = uid;
@@ -246,6 +249,7 @@ export async function importHistoricalMatch({ matchNumber, homeTeam, awayTeam, k
         accuracyPercentage: 0,
         totalPoints: 0,
         isManual: true,
+        groupIds: groupId ? [groupId] : [],
         createdAt: serverTimestamp(),
       });
     }

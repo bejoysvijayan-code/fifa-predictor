@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Timestamp } from 'firebase/firestore';
 import {
   getMatches,
+  getGroups,
   importHistoricalMatch,
   addPredictionsToExistingMatch,
   recalculateLeaderboard,
@@ -19,6 +20,8 @@ function toDatetimeLocal(firestoreTs) {
 
 export default function ImportMatch() {
   const [existingMatches, setExistingMatches] = useState([]);
+  const [groups, setGroups] = useState([]);
+  const [selectedGroupId, setSelectedGroupId] = useState('');
   const [selectedMatchId, setSelectedMatchId] = useState('');
   const [locked, setLocked] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -31,6 +34,7 @@ export default function ImportMatch() {
 
   useEffect(() => {
     getMatches().then(setExistingMatches);
+    getGroups().then(setGroups);
   }, []);
 
   function handleMatchSelect(e) {
@@ -99,8 +103,9 @@ export default function ImportMatch() {
         prediction: p.prediction,
         predictionTime: p.predictionTime ? Timestamp.fromDate(new Date(p.predictionTime)) : null,
       }));
+      const groupId = selectedGroupId || null;
       if (selectedMatchId) {
-        await addPredictionsToExistingMatch(selectedMatchId, kickoffTs, form.winner, participantPayload);
+        await addPredictionsToExistingMatch(selectedMatchId, kickoffTs, form.winner, participantPayload, groupId);
       } else {
         await importHistoricalMatch({
           matchNumber: form.matchNumber ? Number(form.matchNumber) : null,
@@ -109,6 +114,7 @@ export default function ImportMatch() {
           kickoffTime: kickoffTs,
           winner: form.winner,
           participants: participantPayload,
+          groupId,
         });
       }
       await recalculateLeaderboard();
@@ -215,6 +221,27 @@ export default function ImportMatch() {
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+
+          {/* Group assignment */}
+          {groups.length > 0 && (
+            <div>
+              <label className="text-[11px] font-semibold uppercase tracking-wide block mb-1" style={{ color: 'var(--c-t3)' }}>
+                Assign participants to group
+              </label>
+              <select
+                value={selectedGroupId}
+                onChange={(e) => setSelectedGroupId(e.target.value)}
+                className="w-full rounded-xl px-3 py-2.5 text-[13px]"
+                style={{ background: 'var(--c-input)', border: '1px solid var(--c-border)', color: 'var(--c-t1)' }}
+              >
+                <option value="">— No group —</option>
+                {groups.map((g) => (
+                  <option key={g.id} value={g.id}>{g.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {/* Select existing match */}
           <div
             className="rounded-xl p-3"
