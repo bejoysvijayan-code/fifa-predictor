@@ -4,6 +4,59 @@ import { getGroups, getPolls, createPoll, updatePoll, deletePoll, getPollVotes }
 
 const EMPTY_FORM = { question: '', type: 'prediction', showResults: 'after_vote', deadline: '', allowCustomOptions: false };
 
+const inpStyle = {
+  background: 'var(--c-inp)', border: '1px solid var(--c-inp-bd)',
+  color: 'var(--c-inp-t)', borderRadius: 8, padding: '8px 12px',
+  fontSize: 14, width: '100%', outline: 'none',
+};
+
+function ToggleSwitch({ name, checked, onChange, label, hint }) {
+  return (
+    <label className="flex items-center gap-3 cursor-pointer select-none">
+      <div className="relative flex-shrink-0">
+        <input type="checkbox" name={name} checked={checked} onChange={onChange} className="sr-only" />
+        <div className="w-10 h-5 rounded-full transition-colors"
+          style={{ background: checked ? 'var(--c-primary)' : 'var(--c-border)' }}>
+          <div className="w-4 h-4 bg-white rounded-full shadow absolute top-0.5 transition-transform"
+            style={{ transform: checked ? 'translateX(22px)' : 'translateX(2px)' }} />
+        </div>
+      </div>
+      <div>
+        <p className="text-[13px] font-medium" style={{ color: 'var(--c-t1)' }}>{label}</p>
+        {hint && <p className="text-[11px]" style={{ color: 'var(--c-t3)' }}>{hint}</p>}
+      </div>
+    </label>
+  );
+}
+
+function OptionsEditor({ opts, onUpdate, onAdd, onRemove }) {
+  return (
+    <div>
+      <label className="text-xs block mb-2" style={{ color: 'var(--c-t2)' }}>Options (min 2, max 8)</label>
+      <div className="space-y-2">
+        {opts.map((opt, idx) => (
+          <div key={idx} className="flex gap-2">
+            <input value={opt} onChange={(e) => onUpdate(idx, e.target.value)}
+              placeholder={`Option ${idx + 1}`} style={{ ...inpStyle, flex: 1, width: 'auto' }} />
+            {opts.length > 2 && (
+              <button type="button" onClick={() => onRemove(idx)}
+                className="px-3 text-lg rounded-lg flex-shrink-0"
+                style={{ background: 'var(--c-red-bg)', color: 'var(--c-red)', border: '1px solid var(--c-red-bd)' }}>×</button>
+            )}
+          </div>
+        ))}
+      </div>
+      {opts.length < 8 && (
+        <button type="button" onClick={onAdd}
+          className="mt-2 text-xs font-medium px-3 py-1.5 rounded-lg"
+          style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-t2)' }}>
+          + Add option
+        </button>
+      )}
+    </div>
+  );
+}
+
 function toDatetimeLocal(ts) {
   if (!ts) return '';
   const d = ts.toDate ? ts.toDate() : new Date(ts);
@@ -163,59 +216,6 @@ export default function ManagePolls() {
   }
 
   function flash(m) { setMsg(m); setTimeout(() => setMsg(null), 5000); }
-
-  const inpStyle = {
-    background: 'var(--c-inp)', border: '1px solid var(--c-inp-bd)',
-    color: 'var(--c-inp-t)', borderRadius: 8, padding: '8px 12px',
-    fontSize: 14, width: '100%', outline: 'none',
-  };
-
-  function ToggleSwitch({ name, checked, onChange, label, hint }) {
-    return (
-      <label className="flex items-center gap-3 cursor-pointer select-none">
-        <div className="relative flex-shrink-0">
-          <input type="checkbox" name={name} checked={checked} onChange={onChange} className="sr-only" />
-          <div className="w-10 h-5 rounded-full transition-colors"
-            style={{ background: checked ? 'var(--c-primary)' : 'var(--c-border)' }}>
-            <div className="w-4 h-4 bg-white rounded-full shadow absolute top-0.5 transition-transform"
-              style={{ transform: checked ? 'translateX(22px)' : 'translateX(2px)' }} />
-          </div>
-        </div>
-        <div>
-          <p className="text-[13px] font-medium" style={{ color: 'var(--c-t1)' }}>{label}</p>
-          {hint && <p className="text-[11px]" style={{ color: 'var(--c-t3)' }}>{hint}</p>}
-        </div>
-      </label>
-    );
-  }
-
-  function OptionsEditor({ opts, onUpdate, onAdd, onRemove }) {
-    return (
-      <div>
-        <label className="text-xs block mb-2" style={{ color: 'var(--c-t2)' }}>Options (min 2, max 8)</label>
-        <div className="space-y-2">
-          {opts.map((opt, idx) => (
-            <div key={idx} className="flex gap-2">
-              <input value={opt} onChange={(e) => onUpdate(idx, e.target.value)}
-                placeholder={`Option ${idx + 1}`} style={{ ...inpStyle, flex: 1, width: 'auto' }} />
-              {opts.length > 2 && (
-                <button type="button" onClick={() => onRemove(idx)}
-                  className="px-3 text-lg rounded-lg flex-shrink-0"
-                  style={{ background: 'var(--c-red-bg)', color: 'var(--c-red)', border: '1px solid var(--c-red-bd)' }}>×</button>
-              )}
-            </div>
-          ))}
-        </div>
-        {opts.length < 8 && (
-          <button type="button" onClick={onAdd}
-            className="mt-2 text-xs font-medium px-3 py-1.5 rounded-lg"
-            style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-t2)' }}>
-            + Add option
-          </button>
-        )}
-      </div>
-    );
-  }
 
   if (loading) return <div className="text-center py-8" style={{ color: 'var(--c-t2)' }}>Loading…</div>;
 
