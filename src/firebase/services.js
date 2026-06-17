@@ -468,14 +468,15 @@ export async function mergeUsers(sourceUid, targetUid) {
 
 // ── Polls ──────────────────────────────────────────────
 
-export async function createPoll({ groupId, question, options, type, showResults, deadline }) {
+export async function createPoll({ groupId, question, options, type, showResults, allowCustomOptions, deadline }) {
   const ref = doc(collection(db, 'polls'));
   await setDoc(ref, {
     groupId,
     question,
     options,
-    type,           // 'prediction' | 'opinion'
-    showResults,    // 'always' | 'after_vote' | 'after_close'
+    type,
+    showResults,
+    allowCustomOptions: allowCustomOptions || false,
     status: 'open',
     result: null,
     createdAt: serverTimestamp(),

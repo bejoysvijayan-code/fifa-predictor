@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useGroup } from '../contexts/GroupContext';
-import { getMatches, getUserPredictions, getUser, getAllUsers } from '../firebase/services';
+import { getMatches, getUserPredictions, getUser, getAllUsers, getPolls, getUserPollVote, castVote } from '../firebase/services';
 import { sortLeaderboard as sort } from '../utils/scoring';
 import UserStatsCard from '../components/UserStatsCard';
 import MatchCard from '../components/MatchCard';
@@ -14,6 +14,9 @@ export default function Dashboard() {
   const [predictions, setPredictions] = useState([]);
   const [userStats, setUserStats] = useState(null);
   const [rank, setRank] = useState(null);
+  const [openPolls, setOpenPolls] = useState([]);
+  const [pollVotes, setPollVotes] = useState({}); // pollId -> userVote
+  const [votingPoll, setVotingPoll] = useState(null);
   const [loading, setLoading] = useState(true);
 
   async function load() {
@@ -27,13 +30,26 @@ export default function Dashboard() {
     setPredictions(userPreds);
     setUserStats(stats);
 
-    // Rank within active group (or all users for app admin with no group)
     const poolUsers = activeGroupId
       ? allUsers.filter((u) => !u.hideFromLeaderboard && (u.groupIds || []).includes(activeGroupId))
       : allUsers.filter((u) => !u.hideFromLeaderboard);
     const sorted = sort(poolUsers);
     const idx = sorted.findIndex((u) => (u.uid || u.id) === user.uid);
     setRank(idx >= 0 ? idx + 1 : null);
+
+    // Load open polls for active group
+    if (activeGroupId) {
+      const polls = await getPolls(activeGroupId);
+      const open = polls.filter((p) => p.status === 'open').slice(0, 2);
+      setOpenPolls(open);
+      const votes = {};
+      await Promise.all(open.map(async (p) => {
+        const v = await getUserPollVote(p.id, user.uid);
+        if (v) votes[p.id] = v.vote;
+      }));
+      setPollVotes(votes);
+    }
+
     setLoading(false);
   }
 
@@ -147,6 +163,58 @@ export default function Dashboard() {
           </div>
         )}
       </section>
+
+      {/* Recent polls */}
+      {openPolls.length > 0 && (
+        <section>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-[15px] font-semibold" style={{ color: 'var(--c-t1)' }}>Open Polls</h2>
+            <Link to="/polls" className="text-[13px] font-medium transition-opacity hover:opacity-80"
+              style={{ color: 'var(--c-primary)' }}>View all →</Link>
+          </div>
+          <div className="space-y-3">
+            {openPolls.map((poll) => {
+              const userVote = pollVotes[poll.id];
+              return (
+                <div key={poll.id} className="rounded-2xl p-4 space-y-3"
+                  style={{ background: 'var(--c-card)', border: '1px solid var(--c-border)', transition: 'background 0.2s, border-color 0.2s' }}>
+                  <p className="text-[13px] font-semibold" style={{ color: 'var(--c-t1)' }}>{poll.question}</p>
+                  {userVote ? (
+                    <div className="text-[12px] px-3 py-2 rounded-xl"
+                      style={{ background: 'var(--c-primary-bg)', border: '1px solid var(--c-primary-bd)', color: 'var(--c-primary)' }}>
+                      ✓ You voted: <strong>{userVote}</strong>
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {poll.options.slice(0, 3).map((opt) => (
+                        <button key={opt} disabled={votingPoll === poll.id}
+                          onClick={async () => {
+                            setVotingPoll(poll.id);
+                            try {
+                              await castVote(poll.id, user.uid, opt);
+                              setPollVotes((prev) => ({ ...prev, [poll.id]: opt }));
+                            } catch {}
+                            finally { setVotingPoll(null); }
+                          }}
+                          className="px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all disabled:opacity-50"
+                          style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-t1)' }}>
+                          {opt}
+                        </button>
+                      ))}
+                      {poll.options.length > 3 && (
+                        <Link to="/polls" className="px-3 py-1.5 rounded-lg text-[12px] font-medium"
+                          style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-t3)' }}>
+                          +{poll.options.length - 3} more →
+                        </Link>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {/* Quick nav cards */}
       <div className="grid grid-cols-2 gap-3">

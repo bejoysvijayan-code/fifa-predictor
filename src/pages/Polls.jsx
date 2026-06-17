@@ -242,7 +242,8 @@ export default function Polls() {
   }
 
   const open = polls.filter((p) => p.status === 'open');
-  const closed = polls.filter((p) => p.status === 'closed');
+  const completed = polls.filter((p) => p.status === 'closed' && p.result);
+  const closed = polls.filter((p) => p.status === 'closed' && !p.result);
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-7 space-y-7 animate-fade-in">
@@ -266,15 +267,23 @@ export default function Polls() {
           {open.length > 0 && (
             <section className="space-y-4">
               <h2 className="text-[13px] font-semibold uppercase tracking-wide" style={{ color: 'var(--c-t3)' }}>
-                Open · {open.length}
+                🟢 Open · {open.length}
               </h2>
               {open.map((p) => <PollCard key={p.id} poll={p} userId={user.uid} allUsers={allUsers} />)}
+            </section>
+          )}
+          {completed.length > 0 && (
+            <section className="space-y-4">
+              <h2 className="text-[13px] font-semibold uppercase tracking-wide" style={{ color: 'var(--c-t3)' }}>
+                ✅ Completed · {completed.length}
+              </h2>
+              {completed.map((p) => <PollCard key={p.id} poll={p} userId={user.uid} allUsers={allUsers} />)}
             </section>
           )}
           {closed.length > 0 && (
             <section className="space-y-4">
               <h2 className="text-[13px] font-semibold uppercase tracking-wide" style={{ color: 'var(--c-t3)' }}>
-                Closed · {closed.length}
+                🔒 Closed · {closed.length}
               </h2>
               {closed.map((p) => <PollCard key={p.id} poll={p} userId={user.uid} allUsers={allUsers} />)}
             </section>
