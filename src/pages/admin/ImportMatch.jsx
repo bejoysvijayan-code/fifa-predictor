@@ -136,8 +136,10 @@ export default function ImportMatch() {
 
   function parseDateTime(raw) {
     if (!raw) return '';
+    // Normalize WhatsApp "at" separator: "16/6/2026 at 6:50 pm" → "16/6/2026 6:50 pm"
+    const normalized = raw.replace(/\s+at\s+/i, ' ');
     // Handle DD/MM/YYYY HH:MM [AM/PM] and DD-MM-YYYY HH:MM [AM/PM]
-    const dmyMatch = raw.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})[\s,T](\d{1,2}):(\d{2})(?:\s*(AM|PM))?/i);
+    const dmyMatch = normalized.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})[\s,T](\d{1,2}):(\d{2})(?:\s*(AM|PM))?/i);
     if (dmyMatch) {
       const [, d, m, y, rawH, min, ampm] = dmyMatch;
       let h = parseInt(rawH, 10);
@@ -149,7 +151,7 @@ export default function ImportMatch() {
       return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}T${String(h).padStart(2,'0')}:${min}`;
     }
     // Try native parse for ISO / standard formats (handles AM/PM natively)
-    const parsed = new Date(raw);
+    const parsed = new Date(normalized);
     if (!isNaN(parsed)) {
       const pad = (n) => String(n).padStart(2, '0');
       return `${parsed.getFullYear()}-${pad(parsed.getMonth()+1)}-${pad(parsed.getDate())}T${pad(parsed.getHours())}:${pad(parsed.getMinutes())}`;
