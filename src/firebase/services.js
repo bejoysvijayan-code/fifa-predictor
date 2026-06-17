@@ -98,13 +98,14 @@ export async function deleteMatch(matchId) {
 
 // Add participant predictions to an existing match + set its result
 export async function addPredictionsToExistingMatch(matchId, kickoffTime, winner, participants, groupId = null) {
+  const gIds = Array.isArray(groupId) ? groupId : (groupId ? [groupId] : []);
   const batch = writeBatch(db);
 
   // Update match result and status
   batch.update(doc(db, 'matches', matchId), {
     result: { winner },
     status: 'completed',
-    ...(groupId ? { groupIds: arrayUnion(groupId) } : {}),
+    ...(gIds.length ? { groupIds: arrayUnion(...gIds) } : {}),
   });
 
   // Resolve / create users then add predictions
@@ -114,7 +115,7 @@ export async function addPredictionsToExistingMatch(matchId, kickoffTime, winner
     let userId;
     if (existing) {
       userId = existing.uid || existing.id;
-      if (groupId) batch.update(doc(db, 'users', userId), { groupIds: arrayUnion(groupId) });
+      if (gIds.length) batch.update(doc(db, 'users', userId), { groupIds: arrayUnion(...gIds) });
     } else {
       const uid = 'participant_' + name.toLowerCase().replace(/\s+/g, '_') + '_' + Date.now();
       userId = uid;
@@ -129,7 +130,7 @@ export async function addPredictionsToExistingMatch(matchId, kickoffTime, winner
         accuracyPercentage: 0,
         totalPoints: 0,
         isManual: true,
-        groupIds: groupId ? [groupId] : [],
+        groupIds: gIds,
         createdAt: serverTimestamp(),
       });
     }
@@ -214,6 +215,7 @@ export async function findUserByName(displayName) {
 // ── Import Historical Match ────────────────────────────
 
 export async function importHistoricalMatch({ matchNumber, homeTeam, awayTeam, kickoffTime, winner, participants, groupId = null }) {
+  const gIds = Array.isArray(groupId) ? groupId : (groupId ? [groupId] : []);
   const batch = writeBatch(db);
 
   // Create the match doc
@@ -225,7 +227,7 @@ export async function importHistoricalMatch({ matchNumber, homeTeam, awayTeam, k
     kickoffTime,
     status: 'completed',
     result: { winner },
-    groupIds: groupId ? [groupId] : [],
+    groupIds: gIds,
     createdAt: serverTimestamp(),
   });
 
@@ -236,7 +238,7 @@ export async function importHistoricalMatch({ matchNumber, homeTeam, awayTeam, k
     let userId;
     if (existing) {
       userId = existing.uid || existing.id;
-      if (groupId) batch.update(doc(db, 'users', userId), { groupIds: arrayUnion(groupId) });
+      if (gIds.length) batch.update(doc(db, 'users', userId), { groupIds: arrayUnion(...gIds) });
     } else {
       const uid = 'participant_' + name.toLowerCase().replace(/\s+/g, '_') + '_' + Date.now();
       userId = uid;
@@ -251,7 +253,7 @@ export async function importHistoricalMatch({ matchNumber, homeTeam, awayTeam, k
         accuracyPercentage: 0,
         totalPoints: 0,
         isManual: true,
-        groupIds: groupId ? [groupId] : [],
+        groupIds: gIds,
         createdAt: serverTimestamp(),
       });
     }

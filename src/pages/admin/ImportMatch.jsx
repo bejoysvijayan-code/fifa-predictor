@@ -103,7 +103,9 @@ export default function ImportMatch() {
         prediction: p.prediction,
         predictionTime: p.predictionTime ? Timestamp.fromDate(new Date(p.predictionTime)) : null,
       }));
-      const groupId = selectedGroupId || null;
+      const groupId = selectedGroupId === '__all__'
+        ? groups.map((g) => g.id)
+        : (selectedGroupId || null);
       if (selectedMatchId) {
         await addPredictionsToExistingMatch(selectedMatchId, kickoffTs, form.winner, participantPayload, groupId);
       } else {
@@ -226,19 +228,34 @@ export default function ImportMatch() {
           {groups.length > 0 && (
             <div>
               <label className="text-[11px] font-semibold uppercase tracking-wide block mb-1" style={{ color: 'var(--c-t3)' }}>
-                Assign participants to group
+                Assign to group <span style={{ color: 'var(--c-red)' }}>*</span>
               </label>
               <select
                 value={selectedGroupId}
                 onChange={(e) => setSelectedGroupId(e.target.value)}
                 className="w-full rounded-xl px-3 py-2.5 text-[13px]"
-                style={{ background: 'var(--c-input)', border: '1px solid var(--c-border)', color: 'var(--c-t1)' }}
+                style={{
+                  background: !selectedGroupId ? 'var(--c-orange-bg)' : 'var(--c-input)',
+                  border: `1px solid ${!selectedGroupId ? 'var(--c-orange-bd)' : 'var(--c-border)'}`,
+                  color: !selectedGroupId ? 'var(--c-orange)' : 'var(--c-t1)',
+                }}
               >
-                <option value="">— No group —</option>
+                <option value="">— Select a group —</option>
+                <option value="__all__">🌐 All Groups</option>
                 {groups.map((g) => (
                   <option key={g.id} value={g.id}>{g.name}</option>
                 ))}
               </select>
+              {!selectedGroupId && (
+                <p className="text-[11px] mt-1" style={{ color: 'var(--c-orange)' }}>
+                  ⚠️ No group selected — match won't be visible to any group members.
+                </p>
+              )}
+              {selectedGroupId === '__all__' && (
+                <p className="text-[11px] mt-1" style={{ color: 'var(--c-green)' }}>
+                  ✓ Match and predictions will be added to all {groups.length} groups.
+                </p>
+              )}
             </div>
           )}
 
@@ -441,6 +458,14 @@ export default function ImportMatch() {
               </div>
             )}
           </div>
+
+          {/* Group reminder before submit */}
+          {!selectedGroupId && participants.length > 0 && (
+            <div className="rounded-xl px-4 py-3 text-sm"
+              style={{ background: 'var(--c-orange-bg)', border: '1px solid var(--c-orange-bd)', color: 'var(--c-orange)' }}>
+              ⚠️ Reminder: no group selected. This match will be hidden from all group members. Select a group above or choose "All Groups" before importing.
+            </div>
+          )}
 
           {/* Message */}
           {msg && (
