@@ -63,6 +63,7 @@ function PollCard({ poll, userId, allUsers }) {
   const [votes, setVotes] = useState([]);
   const [voting, setVoting] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [customAnswer, setCustomAnswer] = useState('');
 
   useEffect(() => {
     async function load() {
@@ -137,7 +138,7 @@ function PollCard({ poll, userId, allUsers }) {
       {!loaded ? (
         <div className="py-4 flex justify-center"><div className="spinner" /></div>
       ) : !userVote && !effectivelyClosed ? (
-        /* Vote buttons */
+        /* Vote buttons + optional custom answer */
         <div className="space-y-2">
           {poll.options.map((opt) => (
             <button
@@ -152,12 +153,34 @@ function PollCard({ poll, userId, allUsers }) {
               {opt}
             </button>
           ))}
+          {poll.allowCustomOptions && (
+            <div className="flex gap-2 pt-1">
+              <input
+                value={customAnswer}
+                onChange={(e) => setCustomAnswer(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && customAnswer.trim() && handleVote(customAnswer.trim())}
+                placeholder="Or type your own answer…"
+                disabled={voting}
+                className="flex-1 py-2.5 px-4 rounded-xl text-[13px]"
+                style={{ background: 'var(--c-surface)', border: '1px dashed var(--c-border-s)', color: 'var(--c-t1)', outline: 'none' }}
+              />
+              <button
+                onClick={() => customAnswer.trim() && handleVote(customAnswer.trim())}
+                disabled={voting || !customAnswer.trim()}
+                className="px-4 py-2.5 rounded-xl text-[13px] font-medium disabled:opacity-40 transition-all"
+                style={{ background: 'var(--c-primary-bg)', border: '1px solid var(--c-primary-bd)', color: 'var(--c-primary)' }}
+              >
+                Vote
+              </button>
+            </div>
+          )}
         </div>
       ) : canSeeResults ? (
-        /* Results bars */
+        /* Results bars — includes custom answers */
         <div className="space-y-3">
-          {poll.options.map((opt) => {
+          {[...new Set([...poll.options, ...votes.map((v) => v.vote)])].map((opt) => {
             const count = votes.filter((v) => v.vote === opt).length;
+            if (count === 0 && !poll.options.includes(opt)) return null;
             return (
               <VoteBar
                 key={opt}

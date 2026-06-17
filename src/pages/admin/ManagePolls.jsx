@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Timestamp } from 'firebase/firestore';
 import { getGroups, getPolls, createPoll, updatePoll, deletePoll, getPollVotes } from '../../firebase/services';
 
-const EMPTY_FORM = { question: '', type: 'prediction', showResults: 'after_vote', deadline: '', groupId: '' };
+const EMPTY_FORM = { question: '', type: 'prediction', showResults: 'after_vote', deadline: '', groupId: '', allowCustomOptions: false };
 
 export default function ManagePolls() {
   const [groups, setGroups] = useState([]);
@@ -43,7 +43,8 @@ export default function ManagePolls() {
   }
 
   function handleFormChange(e) {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    const val = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
+    setForm((prev) => ({ ...prev, [e.target.name]: val }));
   }
 
   function updateOption(idx, val) {
@@ -74,6 +75,7 @@ export default function ManagePolls() {
         options: cleanOptions,
         type: form.type,
         showResults: form.showResults,
+        allowCustomOptions: form.allowCustomOptions,
         deadline: form.deadline ? Timestamp.fromDate(new Date(form.deadline)) : null,
       });
       flash({ text: '✅ Poll created!' });
@@ -165,6 +167,28 @@ export default function ManagePolls() {
             <label className="text-xs block mb-1" style={{ color: 'var(--c-t2)' }}>Deadline (optional)</label>
             <input type="datetime-local" name="deadline" value={form.deadline} onChange={handleFormChange} style={inpStyle} />
           </div>
+
+          {/* Allow custom answers */}
+          <label className="flex items-center gap-3 cursor-pointer select-none">
+            <div className="relative flex-shrink-0">
+              <input
+                type="checkbox"
+                name="allowCustomOptions"
+                checked={form.allowCustomOptions}
+                onChange={handleFormChange}
+                className="sr-only"
+              />
+              <div className="w-10 h-5 rounded-full transition-colors"
+                style={{ background: form.allowCustomOptions ? 'var(--c-primary)' : 'var(--c-border)' }}>
+                <div className="w-4 h-4 bg-white rounded-full shadow absolute top-0.5 transition-transform"
+                  style={{ transform: form.allowCustomOptions ? 'translateX(22px)' : 'translateX(2px)' }} />
+              </div>
+            </div>
+            <div>
+              <p className="text-[13px] font-medium" style={{ color: 'var(--c-t1)' }}>Allow custom answers</p>
+              <p className="text-[11px]" style={{ color: 'var(--c-t3)' }}>Members can type their own answer if not in the list</p>
+            </div>
+          </label>
 
           {/* Options */}
           <div>
