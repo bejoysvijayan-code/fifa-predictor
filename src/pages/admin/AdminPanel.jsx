@@ -5,8 +5,9 @@ import ImportMatch from './ImportMatch';
 import ManageUsers from './ManageUsers';
 import QuickAdd from './QuickAdd';
 import ManageGroups from './ManageGroups';
+import ManagePolls from './ManagePolls';
 
-const TABS = ['Matches', 'Results', 'Import', 'Users', 'Groups', 'Schedule'];
+const TABS = ['Matches', 'Results', 'Import', 'Users', 'Groups', 'Polls', 'Schedule'];
 
 export default function AdminPanel() {
   const [tab, setTab] = useState('Matches');
@@ -20,14 +21,14 @@ export default function AdminPanel() {
 
       {/* Tabs */}
       <div
-        className="flex gap-2 mb-6 pb-3"
+        className="flex gap-2 mb-6 pb-3 overflow-x-auto"
         style={{ borderBottom: '1px solid var(--c-border)' }}
       >
         {TABS.map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
-            className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            className="flex-shrink-0 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
             style={
               tab === t
                 ? { background: 'var(--c-gold)', color: '#0F172A' }
@@ -40,7 +41,7 @@ export default function AdminPanel() {
               if (tab !== t) e.currentTarget.style.background = 'transparent';
             }}
           >
-            {t === 'Import' ? '📥 Import' : t === 'Schedule' ? '📅 Schedule' : t === 'Groups' ? '👥 Groups' : t}
+            {t === 'Import' ? '📥 Import' : t === 'Schedule' ? '📅 Schedule' : t === 'Groups' ? '👥 Groups' : t === 'Polls' ? '📊 Polls' : t}
           </button>
         ))}
       </div>
@@ -50,6 +51,7 @@ export default function AdminPanel() {
       {tab === 'Import'   && <ImportMatch />}
       {tab === 'Users'    && <ManageUsers />}
       {tab === 'Groups'   && <ManageGroups />}
+      {tab === 'Polls'    && <ManagePolls />}
       {tab === 'Schedule' && <QuickAdd />}
     </div>
   );

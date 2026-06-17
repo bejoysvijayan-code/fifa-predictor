@@ -465,3 +465,61 @@ export async function mergeUsers(sourceUid, targetUid) {
   await batch.commit();
   await recalculateLeaderboard();
 }
+
+// ── Polls ──────────────────────────────────────────────
+
+export async function createPoll({ groupId, question, options, type, showResults, deadline }) {
+  const ref = doc(collection(db, 'polls'));
+  await setDoc(ref, {
+    groupId,
+    question,
+    options,
+    type,           // 'prediction' | 'opinion'
+    showResults,    // 'always' | 'after_vote' | 'after_close'
+    status: 'open',
+    result: null,
+    createdAt: serverTimestamp(),
+    deadline: deadline || null,
+  });
+  return ref.id;
+}
+
+export async function getPolls(groupId) {
+  const q = query(collection(db, 'polls'), where('groupId', '==', groupId), orderBy('createdAt', 'desc'));
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+export async function updatePoll(pollId, data) {
+  await updateDoc(doc(db, 'polls', pollId), data);
+}
+
+export async function deletePoll(pollId) {
+  await deleteDoc(doc(db, 'polls', pollId));
+  const q = query(collection(db, 'pollVotes'), where('pollId', '==', pollId));
+  const snap = await getDocs(q);
+  if (snap.docs.length > 0) {
+    const batch = writeBatch(db);
+    snap.docs.forEach((d) => batch.delete(d.ref));
+    await batch.commit();
+  }
+}
+
+export async function castVote(pollId, userId, vote) {
+  const q = query(collection(db, 'pollVotes'), where('pollId', '==', pollId), where('userId', '==', userId));
+  const snap = await getDocs(q);
+  if (!snap.empty) throw new Error('Already voted');
+  await addDoc(collection(db, 'pollVotes'), { pollId, userId, vote, timestamp: serverTimestamp() });
+}
+
+export async function getPollVotes(pollId) {
+  const q = query(collection(db, 'pollVotes'), where('pollId', '==', pollId));
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+export async function getUserPollVote(pollId, userId) {
+  const q = query(collection(db, 'pollVotes'), where('pollId', '==', pollId), where('userId', '==', userId));
+  const snap = await getDocs(q);
+  return snap.empty ? null : { id: snap.docs[0].id, ...snap.docs[0].data() };
+}

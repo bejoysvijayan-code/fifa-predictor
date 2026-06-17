@@ -40,6 +40,13 @@ function IconUser() {
     </svg>
   );
 }
+function IconPoll() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M3 3h4v18H3zm7 8h4v10h-4zm7-5h4v15h-4z" />
+    </svg>
+  );
+}
 function IconSwitch() {
   return (
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -52,8 +59,12 @@ const TABS = [
   { to: '/', label: 'Home', Icon: IconHome },
   { to: '/matches', label: 'Matches', Icon: IconMatches },
   { to: '/leaderboard', label: 'Rankings', Icon: IconTrophy },
-  { to: '/my-predictions', label: 'My Picks', Icon: IconList },
+  { to: '/polls', label: 'Polls', Icon: IconPoll },
   { to: '/profile', label: 'Profile', Icon: IconUser },
+];
+
+const DESKTOP_EXTRA = [
+  { to: '/my-predictions', label: 'My Picks' },
 ];
 
 export default function Navbar() {
@@ -129,7 +140,7 @@ export default function Navbar() {
 
           {/* Desktop nav links */}
           <div className="hidden md:flex items-center gap-0.5 ml-2">
-            {TABS.slice(0, -1).map(({ to, label }) => (
+            {[...TABS.slice(0, -1), ...DESKTOP_EXTRA].map(({ to, label }) => (
               <NavLink key={to} to={to} end={to === '/'}
                 className="px-3 py-2 rounded-xl text-[13px] font-medium transition-all duration-150"
                 style={({ isActive }) => ({

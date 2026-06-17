@@ -13,6 +13,7 @@ import Leaderboard from './pages/Leaderboard';
 import Profile from './pages/Profile';
 import GroupAdmin from './pages/GroupAdmin';
 import GroupSelect from './pages/GroupSelect';
+import Polls from './pages/Polls';
 import AdminPanel from './pages/admin/AdminPanel';
 
 function Layout({ children }) {
@@ -74,6 +75,7 @@ export default function App() {
               <Route path="/leaderboard"          element={<ProtectedRoute><Layout><Leaderboard /></Layout></ProtectedRoute>} />
               <Route path="/profile"              element={<ProtectedRoute><Layout><Profile /></Layout></ProtectedRoute>} />
               <Route path="/profile/:uid"         element={<ProtectedRoute><Layout><Profile /></Layout></ProtectedRoute>} />
+              <Route path="/polls"                element={<ProtectedRoute><Layout><Polls /></Layout></ProtectedRoute>} />
               <Route path="/group-admin/:groupId" element={<ProtectedRoute><Layout><GroupAdmin /></Layout></ProtectedRoute>} />
               <Route path="/admin"                element={<ProtectedRoute adminOnly><Layout><AdminPanel /></Layout></ProtectedRoute>} />
 
