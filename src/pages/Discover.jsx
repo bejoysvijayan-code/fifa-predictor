@@ -311,9 +311,8 @@ export default function Discover() {
   useEffect(() => {
     async function load() {
       try {
-        const [gs, acts] = await Promise.all([getPublicGroups(), getRecentActivity(10)]);
+        const gs = await getPublicGroups();
         setGroups(gs);
-        setActivity(acts);
         if (gs.length) {
           const ps = await getOpenPollsForGroups(gs.map((g) => g.id));
           setPolls(ps);
@@ -321,6 +320,11 @@ export default function Discover() {
       } finally {
         setLoading(false);
       }
+      // Activity requires auth — fetch separately so failures don't block groups/polls
+      try {
+        const acts = await getRecentActivity(10);
+        setActivity(acts);
+      } catch {}
     }
     load();
   }, []);
