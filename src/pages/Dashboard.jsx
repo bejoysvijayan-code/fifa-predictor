@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useGroup } from '../contexts/GroupContext';
-import { getMatches, getUserPredictions, getUser, getAllUsers, getPolls, getUserPollVote, castVote } from '../firebase/services';
+import { getMatches, getUserPredictions, getUser, getAllUsers, getPolls, getUserPollVote, castVote, getRecentActivity } from '../firebase/services';
 import { sortLeaderboard as sort } from '../utils/scoring';
 import UserStatsCard from '../components/UserStatsCard';
 import MatchCard from '../components/MatchCard';
@@ -17,6 +17,7 @@ export default function Dashboard() {
   const [openPolls, setOpenPolls] = useState([]);
   const [pollVotes, setPollVotes] = useState({}); // pollId -> userVote
   const [votingPoll, setVotingPoll] = useState(null);
+  const [recentActivity, setRecentActivity] = useState([]);
   const [loading, setLoading] = useState(true);
 
   async function load() {
@@ -49,6 +50,12 @@ export default function Dashboard() {
       }));
       setPollVotes(votes);
     }
+
+    // Load recent activity (last 5 items for widget)
+    try {
+      const acts = await getRecentActivity(5);
+      setRecentActivity(acts);
+    } catch {}
 
     setLoading(false);
   }
@@ -209,6 +216,41 @@ export default function Dashboard() {
                       )}
                     </div>
                   )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* Activity widget */}
+      {recentActivity.length > 0 && (
+        <section>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-[15px] font-semibold" style={{ color: 'var(--c-t1)' }}>Recent Activity</h2>
+            <Link to="/activity" className="text-[13px] font-medium transition-opacity hover:opacity-80"
+              style={{ color: 'var(--c-primary)' }}>See all →</Link>
+          </div>
+          <div className="rounded-2xl overflow-hidden"
+            style={{ background: 'var(--c-card)', border: '1px solid var(--c-border)', transition: 'background 0.2s, border-color 0.2s' }}>
+            {recentActivity.map((a, i) => {
+              const label = (() => {
+                if (a.type === 'poll_vote') return `${a.displayName} voted on "${a.pollQuestion}"`;
+                if (a.type === 'prediction') return `${a.displayName} made a prediction`;
+                if (a.type === 'member_join') return `${a.displayName} joined ${a.groupName}`;
+                if (a.type === 'poll_created') return `New poll: "${a.pollQuestion}"`;
+                return a.type;
+              })();
+              const icon = { poll_vote: '📊', prediction: '⚽', member_join: '👋', poll_created: '📝' }[a.type] || '•';
+              const ts = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
+              const mins = Math.floor((Date.now() - ts.getTime()) / 60000);
+              const ago = mins < 1 ? 'just now' : mins < 60 ? `${mins}m ago` : `${Math.floor(mins / 60)}h ago`;
+              return (
+                <div key={a.id} className="flex items-center gap-3 px-4 py-3"
+                  style={{ borderTop: i > 0 ? '1px solid var(--c-border)' : 'none' }}>
+                  <span className="text-base w-6 flex-shrink-0 text-center">{icon}</span>
+                  <p className="flex-1 text-[12px] leading-snug truncate" style={{ color: 'var(--c-t2)' }}>{label}</p>
+                  <span className="flex-shrink-0 text-[11px]" style={{ color: 'var(--c-t3)' }}>{ago}</span>
                 </div>
               );
             })}

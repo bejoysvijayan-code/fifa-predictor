@@ -65,6 +65,8 @@ const TABS = [
 
 const DESKTOP_EXTRA = [
   { to: '/my-predictions', label: 'My Picks' },
+  { to: '/discover', label: 'Discover' },
+  { to: '/activity', label: 'Activity' },
 ];
 
 export default function Navbar() {

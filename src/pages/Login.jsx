@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getPublicMatches } from '../firebase/services';
 import CircleFlag from '../components/CircleFlag';
@@ -139,13 +139,18 @@ const FILTERS = ['All', 'Live', 'Upcoming', 'Completed'];
 export default function Login() {
   const { user, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('All');
 
   useEffect(() => {
-    if (user) navigate('/');
-  }, [user, navigate]);
+    if (user) {
+      const params = new URLSearchParams(location.search);
+      const redirect = params.get('redirect');
+      navigate(redirect || '/');
+    }
+  }, [user, navigate, location.search]);
 
   useEffect(() => {
     getPublicMatches()

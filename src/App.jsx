@@ -14,6 +14,8 @@ import Profile from './pages/Profile';
 import GroupAdmin from './pages/GroupAdmin';
 import GroupSelect from './pages/GroupSelect';
 import Polls from './pages/Polls';
+import Discover from './pages/Discover';
+import Activity from './pages/Activity';
 import AdminPanel from './pages/admin/AdminPanel';
 
 function Layout({ children }) {
@@ -65,6 +67,7 @@ export default function App() {
             <Routes>
               <Route path="/" element={<SmartRoot />} />
               <Route path="/login" element={<Login />} />
+              <Route path="/discover" element={<Discover />} />
 
               {/* Group chooser — protected but no Layout (full-screen standalone) */}
               <Route path="/choose-group" element={<ProtectedRoute><GroupSelect /></ProtectedRoute>} />
@@ -76,6 +79,7 @@ export default function App() {
               <Route path="/profile"              element={<ProtectedRoute><Layout><Profile /></Layout></ProtectedRoute>} />
               <Route path="/profile/:uid"         element={<ProtectedRoute><Layout><Profile /></Layout></ProtectedRoute>} />
               <Route path="/polls"                element={<ProtectedRoute><Layout><Polls /></Layout></ProtectedRoute>} />
+              <Route path="/activity"            element={<ProtectedRoute><Layout><Activity /></Layout></ProtectedRoute>} />
               <Route path="/group-admin/:groupId" element={<ProtectedRoute><Layout><GroupAdmin /></Layout></ProtectedRoute>} />
               <Route path="/admin"                element={<ProtectedRoute adminOnly><Layout><AdminPanel /></Layout></ProtectedRoute>} />
 

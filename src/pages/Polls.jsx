@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useGroup } from '../contexts/GroupContext';
-import { getPolls, getPollVotes, castVote, getUserPollVote, getAllUsers } from '../firebase/services';
+import { getPolls, getPollVotes, castVote, getUserPollVote, getAllUsers, logActivity } from '../firebase/services';
 
 function VoteBar({ option, count, total, isResult, isUserVote }) {
   const pct = total > 0 ? Math.round((count / total) * 100) : 0;
@@ -88,8 +88,16 @@ function PollCard({ poll, userId, allUsers }) {
     setVoting(true);
     try {
       await castVote(poll.id, userId, option);
+      const displayName = allUsers.find((u) => (u.uid || u.id) === userId)?.displayName || userId;
       setUserVote(option);
-      setVotes((prev) => [...prev, { id: Date.now(), pollId: poll.id, userId, vote: option, displayName: allUsers.find((u) => (u.uid || u.id) === userId)?.displayName || userId }]);
+      setVotes((prev) => [...prev, { id: Date.now(), pollId: poll.id, userId, vote: option, displayName }]);
+      logActivity('poll_vote', {
+        userId,
+        displayName,
+        pollId: poll.id,
+        pollQuestion: poll.question,
+        groupId: poll.groupId,
+      });
     } catch {}
     finally { setVoting(false); }
   }

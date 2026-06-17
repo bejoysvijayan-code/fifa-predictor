@@ -10,6 +10,7 @@ import {
   query,
   where,
   orderBy,
+  limit,
   serverTimestamp,
   writeBatch,
   arrayUnion,
@@ -523,4 +524,57 @@ export async function getUserPollVote(pollId, userId) {
   const q = query(collection(db, 'pollVotes'), where('pollId', '==', pollId), where('userId', '==', userId));
   const snap = await getDocs(q);
   return snap.empty ? null : { id: snap.docs[0].id, ...snap.docs[0].data() };
+}
+
+// ── Discover / Public Groups ───────────────────────────
+
+export async function getPublicGroups() {
+  const q = query(collection(db, 'groups'), where('isPublic', '==', true));
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+// Fetches open polls for an array of groupIds (max 30)
+export async function getOpenPollsForGroups(groupIds) {
+  if (!groupIds.length) return [];
+  const chunks = [];
+  for (let i = 0; i < groupIds.length; i += 30) chunks.push(groupIds.slice(i, i + 30));
+  const results = await Promise.all(
+    chunks.map((chunk) => getDocs(query(collection(db, 'polls'), where('groupId', 'in', chunk))))
+  );
+  return results
+    .flatMap((snap) => snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+    .filter((p) => p.status === 'open');
+}
+
+// Instant join for public groups — no approval needed
+export async function joinPublicGroup(groupId, userId) {
+  await updateDoc(doc(db, 'users', userId), { groupIds: arrayUnion(groupId) });
+}
+
+// ── Activity Feed ──────────────────────────────────────
+
+export async function logActivity(type, payload) {
+  try {
+    await addDoc(collection(db, 'activity'), {
+      type,
+      ...payload,
+      createdAt: serverTimestamp(),
+    });
+  } catch (e) {
+    console.warn('logActivity failed:', e);
+  }
+}
+
+// Returns activity items from the last 48 hours, newest first
+export async function getRecentActivity(limitCount = 50) {
+  const since = new Date(Date.now() - 48 * 60 * 60 * 1000);
+  const q = query(
+    collection(db, 'activity'),
+    where('createdAt', '>', since),
+    orderBy('createdAt', 'desc'),
+    limit(limitCount)
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }

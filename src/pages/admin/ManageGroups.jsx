@@ -130,6 +130,12 @@ export default function ManageGroups() {
                     <>
                       <button onClick={() => expandGroup(g)} className="flex-1 flex items-center gap-2 text-left">
                         <span className="text-[13px] font-medium" style={{ color: 'var(--c-t1)' }}>{g.name}</span>
+                        {g.isPublic && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full"
+                            style={{ background: 'var(--c-green-bg)', color: 'var(--c-green)', border: '1px solid var(--c-green-bd)' }}>
+                            Public
+                          </span>
+                        )}
                         {adminIds.length > 0 && (
                           <span className="text-[10px] px-1.5 py-0.5 rounded-full"
                             style={{ background: 'var(--c-gold-bg)', color: 'var(--c-gold)', border: '1px solid var(--c-gold-bd)' }}>
@@ -138,6 +144,13 @@ export default function ManageGroups() {
                         )}
                         <span className={`ml-auto transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
                           style={{ color: 'var(--c-t3)' }}>▾</span>
+                      </button>
+                      <button onClick={async () => { await updateGroup(g.id, { isPublic: !g.isPublic }); await load(); }}
+                        className="px-3 py-1 rounded-lg text-[12px]"
+                        style={g.isPublic
+                          ? { background: 'var(--c-green-bg)', color: 'var(--c-green)', border: '1px solid var(--c-green-bd)' }
+                          : { background: 'var(--c-input)', color: 'var(--c-t2)', border: '1px solid var(--c-border)' }}>
+                        {g.isPublic ? 'Public' : 'Private'}
                       </button>
                       <button onClick={() => { setEditingId(g.id); setEditName(g.name); }}
                         className="px-3 py-1 rounded-lg text-[12px]"
