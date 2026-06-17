@@ -28,9 +28,7 @@ service cloud.firestore {
     }
 
     match /polls/{pollId} {
-      // Any authenticated user can read polls
-      allow read: if request.auth != null;
-      // Only authenticated users can create/update/delete (admin action)
+      allow read: if true;
       allow write: if request.auth != null;
     }
 
