@@ -1,3 +1,4 @@
+import { useState, useRef, useEffect } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useGroup } from '../contexts/GroupContext';
@@ -68,6 +69,53 @@ const DESKTOP_EXTRA = [
   { to: '/discover', label: 'Discover' },
   { to: '/activity', label: 'Activity' },
 ];
+
+function MoreDropdown({ items, isAnyActive }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    function handleClick(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="px-3 py-2 rounded-xl text-[13px] font-medium transition-all duration-150 flex items-center gap-1"
+        style={{
+          color: isAnyActive ? 'var(--c-primary)' : 'var(--c-t2)',
+          background: isAnyActive ? 'var(--c-primary-bg)' : 'transparent',
+        }}>
+        More
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"
+          style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>
+          <path d="M7 10l5 5 5-5z" />
+        </svg>
+      </button>
+      {open && (
+        <div className="absolute top-full left-0 mt-1 min-w-[140px] rounded-xl overflow-hidden z-50"
+          style={{ background: 'var(--c-card)', border: '1px solid var(--c-border)', boxShadow: 'var(--c-shadow)' }}>
+          {items.map(({ to, label }) => (
+            <NavLink key={to} to={to}
+              onClick={() => setOpen(false)}
+              className="block px-4 py-2.5 text-[13px] font-medium transition-all duration-150"
+              style={({ isActive }) => ({
+                color: isActive ? 'var(--c-primary)' : 'var(--c-t2)',
+                background: isActive ? 'var(--c-primary-bg)' : 'transparent',
+              })}>
+              {label}
+            </NavLink>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Navbar() {
   const { user, logout } = useAuth();
@@ -142,7 +190,7 @@ export default function Navbar() {
 
           {/* Desktop nav links */}
           <div className="hidden md:flex items-center gap-0.5 ml-2">
-            {[...TABS.slice(0, -1), ...DESKTOP_EXTRA].map(({ to, label }) => (
+            {TABS.slice(0, -1).map(({ to, label }) => (
               <NavLink key={to} to={to} end={to === '/'}
                 className="px-3 py-2 rounded-xl text-[13px] font-medium transition-all duration-150"
                 style={({ isActive }) => ({
@@ -152,6 +200,10 @@ export default function Navbar() {
                 {label}
               </NavLink>
             ))}
+            <MoreDropdown
+              items={DESKTOP_EXTRA}
+              isAnyActive={DESKTOP_EXTRA.some(({ to }) => location.pathname.startsWith(to))}
+            />
             {user?.isAdmin && (
               <NavLink to="/admin"
                 className="px-3 py-2 rounded-xl text-[13px] font-medium transition-all duration-150"

@@ -272,6 +272,18 @@ export default function Dashboard() {
           <span className="text-3xl">📋</span>
           <span className="text-[13px] font-semibold" style={{ color: 'var(--c-gold)' }}>My Predictions</span>
         </Link>
+        <Link to="/discover"
+          className="rounded-2xl p-5 flex flex-col items-center gap-2 transition-all duration-200 hover:scale-[1.02]"
+          style={{ background: 'var(--c-green-bg)', border: '1px solid var(--c-green-bd)', transition: 'background 0.2s, border-color 0.2s' }}>
+          <span className="text-3xl">🌍</span>
+          <span className="text-[13px] font-semibold" style={{ color: 'var(--c-green)' }}>Discover</span>
+        </Link>
+        <Link to="/activity"
+          className="rounded-2xl p-5 flex flex-col items-center gap-2 transition-all duration-200 hover:scale-[1.02]"
+          style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', transition: 'background 0.2s, border-color 0.2s' }}>
+          <span className="text-3xl">📡</span>
+          <span className="text-[13px] font-semibold" style={{ color: 'var(--c-t2)' }}>Activity</span>
+        </Link>
       </div>
     </div>
   );
