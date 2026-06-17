@@ -264,7 +264,29 @@ export default function ManagePolls() {
           </div>
           <ToggleSwitch name="allowCustomOptions" checked={form.allowCustomOptions} onChange={handleFormChange}
             label="Allow custom answers" hint="Members can type their own answer if not in the list" />
-          <OptionsEditor opts={options} onUpdate={updateOption} onAdd={addOption} onRemove={removeOption} />
+          <div>
+            <label className="text-xs block mb-2" style={{ color: 'var(--c-t2)' }}>Options (min 2, max 8)</label>
+            <div className="space-y-2">
+              {options.map((opt, idx) => (
+                <div key={idx} className="flex gap-2">
+                  <input value={opt} onChange={(e) => updateOption(idx, e.target.value)}
+                    placeholder={`Option ${idx + 1}`} style={{ ...inpStyle, flex: 1, width: 'auto' }} />
+                  {options.length > 2 && (
+                    <button type="button" onClick={() => removeOption(idx)}
+                      className="px-3 text-lg rounded-lg flex-shrink-0"
+                      style={{ background: 'var(--c-red-bg)', color: 'var(--c-red)', border: '1px solid var(--c-red-bd)' }}>×</button>
+                  )}
+                </div>
+              ))}
+            </div>
+            {options.length < 8 && (
+              <button type="button" onClick={addOption}
+                className="mt-2 text-xs font-medium px-3 py-1.5 rounded-lg"
+                style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-t2)' }}>
+                + Add option
+              </button>
+            )}
+          </div>
 
           {msg && (
             <div className="px-4 py-2 rounded-lg text-sm" style={
@@ -376,7 +398,29 @@ export default function ManagePolls() {
                           </div>
                           <span className="text-[13px] font-medium" style={{ color: 'var(--c-t1)' }}>Allow custom answers</span>
                         </label>
-                        <OptionsEditor opts={editingPoll.options} onUpdate={updateEditOption} onAdd={addEditOption} onRemove={removeEditOption} />
+                        <div>
+                          <label className="text-xs block mb-2" style={{ color: 'var(--c-t2)' }}>Options (min 2, max 8)</label>
+                          <div className="space-y-2">
+                            {editingPoll.options.map((opt, idx) => (
+                              <div key={idx} className="flex gap-2">
+                                <input value={opt} onChange={(e) => updateEditOption(idx, e.target.value)}
+                                  placeholder={`Option ${idx + 1}`} style={{ ...inpStyle, flex: 1, width: 'auto' }} />
+                                {editingPoll.options.length > 2 && (
+                                  <button type="button" onClick={() => removeEditOption(idx)}
+                                    className="px-3 text-lg rounded-lg flex-shrink-0"
+                                    style={{ background: 'var(--c-red-bg)', color: 'var(--c-red)', border: '1px solid var(--c-red-bd)' }}>×</button>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                          {editingPoll.options.length < 8 && (
+                            <button type="button" onClick={addEditOption}
+                              className="mt-2 text-xs font-medium px-3 py-1.5 rounded-lg"
+                              style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-t2)' }}>
+                              + Add option
+                            </button>
+                          )}
+                        </div>
                         <div className="flex gap-2">
                           <button onClick={handleSaveEdit} disabled={savingEdit}
                             className="px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-40 text-white"
