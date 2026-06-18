@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import {
   getUser, updateUserProfile, getUserPredictions, getMatches, getAllPredictions, getGroups,
 } from '../firebase/services';
+import { getPredictionStatus, getFlag } from '../utils/scoring';
 
 // ── Badge computation ──────────────────────────────────
 function computeBadges(userPreds, allMatches, allPreds, uid) {
@@ -102,6 +103,9 @@ export default function Profile() {
 
   const [profile, setProfile] = useState(null);
   const [badges, setBadges] = useState(null);
+  const [preds, setPreds] = useState([]);
+  const [matches, setMatches] = useState([]);
+  const [selectedStat, setSelectedStat] = useState(null);
   const [loading, setLoading] = useState(true);
   const [accessDenied, setAccessDenied] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -142,6 +146,8 @@ export default function Profile() {
       setFavoriteTeam(userData?.favoriteTeam || '');
       setFavoritePlayer(userData?.favoritePlayer || '');
       setBadges(computeBadges(userPreds, allMatches, allPreds, targetUid));
+      setPreds(userPreds);
+      setMatches(allMatches);
       setLoading(false);
     });
   }, [targetUid]);
@@ -216,14 +222,89 @@ export default function Profile() {
           { label: 'Correct', value: correct },
           { label: 'Points', value: points },
           { label: 'Accuracy', value: `${accuracy}%` },
-        ].map(({ label, value }) => (
-          <div key={label} className="rounded-2xl p-3 text-center"
-            style={{ background: 'var(--c-card)', border: '1px solid var(--c-border)' }}>
-            <div className="text-[18px] font-bold" style={{ color: 'var(--c-primary)' }}>{value}</div>
-            <div className="text-[10px] mt-0.5" style={{ color: 'var(--c-t3)' }}>{label}</div>
-          </div>
-        ))}
+        ].map(({ label, value }) => {
+          const active = selectedStat === label;
+          return (
+            <button key={label} onClick={() => setSelectedStat(active ? null : label)}
+              className="rounded-2xl p-3 text-center transition-all"
+              style={{
+                background: active ? 'var(--c-primary-bg)' : 'var(--c-card)',
+                border: `1px solid ${active ? 'var(--c-primary)' : 'var(--c-border)'}`,
+                cursor: 'pointer',
+              }}>
+              <div className="text-[18px] font-bold" style={{ color: 'var(--c-primary)' }}>{value}</div>
+              <div className="text-[10px] mt-0.5" style={{ color: active ? 'var(--c-primary)' : 'var(--c-t3)' }}>{label}</div>
+              <div className="text-[9px] mt-0.5" style={{ color: 'var(--c-t3)' }}>{active ? '▲ hide' : '▼ view'}</div>
+            </button>
+          );
+        })}
       </div>
+
+      {/* ── Stat drill-down ── */}
+      {selectedStat && (() => {
+        const matchMap = Object.fromEntries(matches.map((m) => [m.id, m]));
+        const sorted = [...preds]
+          .filter((p) => matchMap[p.matchId])
+          .sort((a, b) => (matchMap[a.matchId]?.matchNumber ?? 999) - (matchMap[b.matchId]?.matchNumber ?? 999));
+
+        const filtered = selectedStat === 'Correct'
+          ? sorted.filter((p) => getPredictionStatus(p.prediction, matchMap[p.matchId]) === 'correct')
+          : sorted;
+
+        const STATUS_STYLE = {
+          correct:   { color: 'var(--c-green)',   bg: 'var(--c-green-bg)',   label: '✓ Correct' },
+          incorrect: { color: 'var(--c-red)',     bg: 'var(--c-red-bg)',     label: '✗ Wrong' },
+          pending:   { color: 'var(--c-t3)',      bg: 'var(--c-surface)',    label: '⏳ Pending' },
+        };
+
+        return (
+          <div className="rounded-2xl overflow-hidden"
+            style={{ background: 'var(--c-card)', border: '1px solid var(--c-border)' }}>
+            <div className="px-4 py-3 flex items-center justify-between"
+              style={{ borderBottom: '1px solid var(--c-border)', background: 'var(--c-surface)' }}>
+              <span className="text-[13px] font-semibold" style={{ color: 'var(--c-t1)' }}>
+                {selectedStat === 'Correct' ? 'Correct Predictions' : 'All Predictions'}
+              </span>
+              <span className="text-[11px]" style={{ color: 'var(--c-t3)' }}>{filtered.length} entries</span>
+            </div>
+            {filtered.length === 0 ? (
+              <div className="py-10 text-center text-[13px]" style={{ color: 'var(--c-t3)' }}>No predictions yet</div>
+            ) : (
+              <div className="divide-y max-h-80 overflow-y-auto" style={{ '--tw-divide-opacity': 1 }}>
+                {filtered.map((p) => {
+                  const match = matchMap[p.matchId];
+                  const status = getPredictionStatus(p.prediction, match);
+                  const s = STATUS_STYLE[status];
+                  return (
+                    <div key={p.id || p.matchId} className="flex items-center gap-3 px-4 py-3"
+                      style={{ borderTop: '1px solid var(--c-border)' }}>
+                      <div className="flex-shrink-0 text-[11px] font-bold w-6 text-center"
+                        style={{ color: 'var(--c-t3)' }}>
+                        {match?.matchNumber ?? '—'}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13px] font-semibold truncate" style={{ color: 'var(--c-t1)' }}>
+                          {getFlag(match?.homeTeam)} {match?.homeTeam} vs {match?.awayTeam} {getFlag(match?.awayTeam)}
+                        </p>
+                        <p className="text-[11px] mt-0.5" style={{ color: 'var(--c-t2)' }}>
+                          Your pick: <strong>{p.prediction}</strong>
+                          {match?.result?.winner && status !== 'pending' && (
+                            <> · Result: <strong>{match.result.winner}</strong></>
+                          )}
+                        </p>
+                      </div>
+                      <span className="flex-shrink-0 text-[11px] font-semibold px-2 py-0.5 rounded-full"
+                        style={{ background: s.bg, color: s.color }}>
+                        {s.label}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* ── Edit profile (own only) ── */}
       {isOwn && (
