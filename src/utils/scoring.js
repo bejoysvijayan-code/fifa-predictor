@@ -73,9 +73,14 @@ export const TEAM_FLAGS = {
   Qatar: '🇶🇦',
   Curacao: '🇨🇼',
   Curaçao: '🇨🇼',
+  Bosnia_and_Herzegovina: '🇧🇦',
 };
 
 export function getFlag(teamName) {
-  const key = teamName?.replace(/\s+/g, '_');
-  return TEAM_FLAGS[key] || '🏳️';
+  if (!teamName) return '🏳️';
+  const key = teamName.replace(/\s+/g, '_');
+  if (TEAM_FLAGS[key]) return TEAM_FLAGS[key];
+  const norm = normalizeTeamName(teamName);
+  const entry = Object.entries(TEAM_FLAGS).find(([k]) => normalizeTeamName(k.replace(/_/g, ' ')) === norm);
+  return entry ? entry[1] : '🏳️';
 }
