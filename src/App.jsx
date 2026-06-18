@@ -1,9 +1,51 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { GroupProvider, useGroup } from './contexts/GroupContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Navbar from './components/Navbar';
+
+function ScrollButtons() {
+  const [showTop, setShowTop] = useState(false);
+  const [showBottom, setShowBottom] = useState(false);
+
+  useEffect(() => {
+    function onScroll() {
+      const scrolled = window.scrollY;
+      const total = document.documentElement.scrollHeight - window.innerHeight;
+      setShowTop(scrolled > 250);
+      setShowBottom(total > 250 && scrolled < total - 100);
+    }
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  if (!showTop && !showBottom) return null;
+
+  const btnStyle = {
+    width: 36, height: 36, borderRadius: '50%', border: '1px solid var(--c-border)',
+    background: 'var(--c-card)', color: 'var(--c-t2)', cursor: 'pointer',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.18)', fontSize: 16, transition: 'opacity 0.2s',
+  };
+
+  return (
+    <div style={{ position: 'fixed', right: 14, bottom: 110, zIndex: 50, display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {showTop && (
+        <button style={btnStyle} onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} title="Scroll to top">
+          ↑
+        </button>
+      )}
+      {showBottom && (
+        <button style={btnStyle} onClick={() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' })} title="Scroll to bottom">
+          ↓
+        </button>
+      )}
+    </div>
+  );
+}
 
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -38,6 +80,7 @@ function Layout({ children }) {
     <div className="min-h-screen" style={{ background: 'var(--c-page)', transition: 'background 0.2s ease' }}>
       <Navbar />
       <main className="pb-24 md:pb-0">{children}</main>
+      <ScrollButtons />
     </div>
   );
 }
