@@ -74,6 +74,7 @@ export const TEAM_FLAGS = {
   Curacao: '🇨🇼',
   Curaçao: '🇨🇼',
   Bosnia_and_Herzegovina: '🇧🇦',
+  Bosnia_Herzegovina: '🇧🇦',
 };
 
 export function getFlag(teamName) {
