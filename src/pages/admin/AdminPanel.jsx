@@ -6,8 +6,9 @@ import ManageUsers from './ManageUsers';
 import QuickAdd from './QuickAdd';
 import ManageGroups from './ManageGroups';
 import ManagePolls from './ManagePolls';
+import ManageHouses from './ManageHouses';
 
-const TABS = ['Matches', 'Results', 'Import', 'Users', 'Groups', 'Polls', 'Schedule'];
+const TABS = ['Matches', 'Results', 'Import', 'Users', 'Groups', 'Houses', 'Polls', 'Schedule'];
 
 export default function AdminPanel() {
   const [tab, setTab] = useState('Matches');
@@ -41,7 +42,7 @@ export default function AdminPanel() {
               if (tab !== t) e.currentTarget.style.background = 'transparent';
             }}
           >
-            {t === 'Import' ? '📥 Import' : t === 'Schedule' ? '📅 Schedule' : t === 'Groups' ? '👥 Groups' : t === 'Polls' ? '📊 Polls' : t}
+            {t === 'Import' ? '📥 Import' : t === 'Schedule' ? '📅 Schedule' : t === 'Groups' ? '👥 Groups' : t === 'Polls' ? '📊 Polls' : t === 'Houses' ? '🏠 Houses' : t}
           </button>
         ))}
       </div>
@@ -51,6 +52,7 @@ export default function AdminPanel() {
       {tab === 'Import'   && <ImportMatch />}
       {tab === 'Users'    && <ManageUsers />}
       {tab === 'Groups'   && <ManageGroups />}
+      {tab === 'Houses'   && <ManageHouses />}
       {tab === 'Polls'    && <ManagePolls />}
       {tab === 'Schedule' && <QuickAdd />}
     </div>

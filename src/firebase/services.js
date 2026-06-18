@@ -578,3 +578,26 @@ export async function getRecentActivity(limitCount = 50) {
   const snap = await getDocs(q);
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
+
+// ── Houses ────────────────────────────────────────────
+
+export async function getHouses() {
+  const snap = await getDocs(collection(db, 'houses'));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+export async function createHouse(data) {
+  return await addDoc(collection(db, 'houses'), { ...data, createdAt: serverTimestamp() });
+}
+
+export async function updateHouse(houseId, data) {
+  await updateDoc(doc(db, 'houses', houseId), data);
+}
+
+export async function deleteHouse(houseId) {
+  await deleteDoc(doc(db, 'houses', houseId));
+}
+
+export async function assignUserToHouse(userId, houseId) {
+  await updateDoc(doc(db, 'users', userId), { houseId: houseId || null });
+}

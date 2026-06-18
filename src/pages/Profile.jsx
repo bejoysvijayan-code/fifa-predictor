@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
-  getUser, updateUserProfile, getUserPredictions, getMatches, getAllPredictions, getGroups,
+  getUser, updateUserProfile, getUserPredictions, getMatches, getAllPredictions, getGroups, getHouses,
 } from '../firebase/services';
 import { getPredictionStatus, getFlag } from '../utils/scoring';
 
@@ -106,6 +106,7 @@ export default function Profile() {
   const [preds, setPreds] = useState([]);
   const [matches, setMatches] = useState([]);
   const [selectedStat, setSelectedStat] = useState(null);
+  const [house, setHouse] = useState(null);
   const [loading, setLoading] = useState(true);
   const [accessDenied, setAccessDenied] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -149,6 +150,9 @@ export default function Profile() {
       setPreds(userPreds);
       setMatches(allMatches);
       setLoading(false);
+      if (userData?.houseId) {
+        getHouses().then((hs) => setHouse(hs.find((h) => h.id === userData.houseId) || null));
+      }
     });
   }, [targetUid]);
 
@@ -212,6 +216,23 @@ export default function Profile() {
               {favoritePlayer && <> · Fav player: <strong style={{ color: 'var(--c-primary)' }}>{favoritePlayer}</strong></>}
             </div>
           )}
+          {house && (() => {
+            const HOUSE_COLORS = {
+              '#EF4444': { bg: 'rgba(239,68,68,0.12)',   border: 'rgba(239,68,68,0.35)' },
+              '#F59E0B': { bg: 'rgba(245,158,11,0.12)',  border: 'rgba(245,158,11,0.35)' },
+              '#3B82F6': { bg: 'rgba(59,130,246,0.12)',  border: 'rgba(59,130,246,0.35)' },
+              '#10B981': { bg: 'rgba(16,185,129,0.12)',  border: 'rgba(16,185,129,0.35)' },
+              '#8B5CF6': { bg: 'rgba(139,92,246,0.12)', border: 'rgba(139,92,246,0.35)' },
+              '#F97316': { bg: 'rgba(249,115,22,0.12)', border: 'rgba(249,115,22,0.35)' },
+            };
+            const cm = HOUSE_COLORS[house.color] || HOUSE_COLORS['#3B82F6'];
+            return (
+              <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[12px] font-semibold"
+                style={{ background: cm.bg, color: house.color, border: `1px solid ${cm.border}` }}>
+                {house.emoji || '🏠'} {house.name}
+              </div>
+            );
+          })()}
         </div>
       </div>
 
