@@ -85,6 +85,7 @@ export const COUNTRY_CODES = {
   'Northern Ireland':         'gb-nir',
   'Bosnia and Herzegovina':   'ba',
   'Bosnia & Herzegovina':     'ba',
+  'Bosnia-Herzegovina':       'ba',
   Montenegro:                 'me',
   'North Macedonia':          'mk',
   Kosovo:                     'xk',
