@@ -34,6 +34,8 @@ export const COUNTRY_CODES = {
   'Saint Lucia':              'lc',
   'Saint Vincent':            'vc',
   'Dominican Republic':       'do',
+  Curacao:                    'cw',
+  'Curaçao':                  'cw',
 
   // ── CONMEBOL ───────────────────────────────────────────
   Argentina:   'ar',
