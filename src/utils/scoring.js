@@ -61,6 +61,8 @@ export const TEAM_FLAGS = {
   Denmark: '🇩🇰',
   Ecuador: '🇪🇨',
   Qatar: '🇶🇦',
+  Curacao: '🇨🇼',
+  Curaçao: '🇨🇼',
 };
 
 export function getFlag(teamName) {
