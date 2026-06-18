@@ -17,6 +17,7 @@ import {
   arrayRemove,
 } from 'firebase/firestore';
 import { db } from './config';
+import { normalizeTeamName } from '../utils/scoring';
 
 // ── Users ──────────────────────────────────────────────
 
@@ -372,7 +373,7 @@ export async function recalculateLeaderboard() {
       statsMap[uid] = { correctPredictions: 0, totalPredictions: 0, totalPoints: 0 };
     }
     statsMap[uid].totalPredictions += 1;
-    if (resultMap[p.matchId] === p.prediction) {
+    if (normalizeTeamName(resultMap[p.matchId]) === normalizeTeamName(p.prediction)) {
       statsMap[uid].correctPredictions += 1;
       statsMap[uid].totalPoints += 3;
     }

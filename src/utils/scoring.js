@@ -8,9 +8,19 @@ export function sortLeaderboard(users) {
   });
 }
 
+export function normalizeTeamName(name) {
+  if (!name) return '';
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/\s*&\s*/g, ' and ')
+    .replace(/\s*-\s*/g, ' ')
+    .replace(/\s+/g, ' ');
+}
+
 export function getPredictionStatus(prediction, match) {
   if (!match || match.status !== 'completed' || !match.result) return 'pending';
-  return prediction === match.result.winner ? 'correct' : 'incorrect';
+  return normalizeTeamName(prediction) === normalizeTeamName(match.result.winner) ? 'correct' : 'incorrect';
 }
 
 export function isMatchLocked(kickoffTime) {
