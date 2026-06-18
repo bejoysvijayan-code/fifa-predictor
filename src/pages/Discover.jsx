@@ -2,7 +2,8 @@ import { useEffect, useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useGroup } from '../contexts/GroupContext';
-import { getPublicGroups, getOpenPollsForGroups, joinPublicGroup, logActivity, getRecentActivity } from '../firebase/services';
+import { getPublicGroups, getOpenPollsForGroups, joinPublicGroup, logActivity, getRecentActivity, getMatches } from '../firebase/services';
+import { getCountryCode } from '../utils/countryFlags';
 import ThemeToggle from '../components/ThemeToggle';
 
 function GoogleIcon({ size = 16 }) {
@@ -295,6 +296,91 @@ function GroupCard({ group, pollCount, isMember, user, onJoin, joining, index })
   );
 }
 
+function TeamFlag({ name, size = 32 }) {
+  const code = getCountryCode(name);
+  if (code) {
+    return (
+      <img
+        src={`https://hatscripts.github.io/circle-flags/flags/${code}.svg`}
+        width={size} height={size}
+        alt={name}
+        className="rounded-full flex-shrink-0"
+        style={{ border: '1.5px solid var(--c-border)' }}
+        onError={(e) => { e.currentTarget.style.display = 'none'; }}
+      />
+    );
+  }
+  return (
+    <div className="rounded-full flex-shrink-0 flex items-center justify-center text-base font-bold"
+      style={{ width: size, height: size, background: 'var(--c-surface)', border: '1.5px solid var(--c-border)', color: 'var(--c-t3)', fontSize: 12 }}>
+      {name?.[0] || '?'}
+    </div>
+  );
+}
+
+function MatchCard({ match }) {
+  const kickoff = match.kickoffTime?.toDate ? match.kickoffTime.toDate() : new Date(match.kickoffTime);
+  const now = new Date();
+  const diffMs = kickoff - now;
+  const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffHrs / 24);
+
+  let countdown, countdownColor;
+  if (diffMs < 0) { countdown = 'Kicked off'; countdownColor = 'var(--c-t3)'; }
+  else if (diffHrs < 1) { countdown = 'Starting soon'; countdownColor = '#EF4444'; }
+  else if (diffHrs < 24) { countdown = `In ${diffHrs}h`; countdownColor = '#F59E0B'; }
+  else { countdown = `In ${diffDays}d`; countdownColor = 'var(--c-primary)'; }
+
+  const dateStr = kickoff.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+  const timeStr = kickoff.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+
+  return (
+    <div className="rounded-2xl overflow-hidden flex flex-col"
+      style={{ background: 'var(--c-card)', border: '1px solid var(--c-border)', boxShadow: 'var(--c-shadow)', transition: 'transform 0.2s, box-shadow 0.2s' }}
+      onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 12px 32px rgba(79,70,229,0.15)'; }}
+      onMouseLeave={(e) => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = 'var(--c-shadow)'; }}>
+
+      <div className="h-0.5" style={{ background: 'linear-gradient(90deg, #4F46E5, #7C3AED, #06B6D4)' }} />
+
+      <div className="px-4 pt-3 pb-1 flex items-center justify-between">
+        {match.matchNumber && (
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+            style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-t3)' }}>
+            Match {match.matchNumber}
+          </span>
+        )}
+        <span className="text-[11px] font-bold ml-auto" style={{ color: countdownColor }}>{countdown}</span>
+      </div>
+
+      <div className="px-4 py-3 flex items-center gap-3">
+        <div className="flex flex-col items-center gap-1.5 flex-1 min-w-0">
+          <TeamFlag name={match.homeTeam} size={36} />
+          <span className="text-[11px] font-semibold text-center leading-tight w-full truncate" style={{ color: 'var(--c-t1)' }}>
+            {match.homeTeam}
+          </span>
+        </div>
+
+        <div className="flex flex-col items-center gap-0.5 flex-shrink-0">
+          <span className="text-[15px] font-black" style={{ color: 'var(--c-t3)' }}>vs</span>
+        </div>
+
+        <div className="flex flex-col items-center gap-1.5 flex-1 min-w-0">
+          <TeamFlag name={match.awayTeam} size={36} />
+          <span className="text-[11px] font-semibold text-center leading-tight w-full truncate" style={{ color: 'var(--c-t1)' }}>
+            {match.awayTeam}
+          </span>
+        </div>
+      </div>
+
+      <div className="px-4 pb-3 flex items-center justify-center gap-1.5">
+        <span className="text-[11px]" style={{ color: 'var(--c-t3)' }}>📅 {dateStr}</span>
+        <span style={{ color: 'var(--c-border)' }}>·</span>
+        <span className="text-[11px]" style={{ color: 'var(--c-t3)' }}>🕐 {timeStr}</span>
+      </div>
+    </div>
+  );
+}
+
 export default function Discover() {
   const { user, loginWithGoogle } = useAuth();
   const { myGroups } = useGroup();
@@ -302,11 +388,13 @@ export default function Discover() {
   const [groups, setGroups] = useState([]);
   const [polls, setPolls] = useState([]);
   const [activity, setActivity] = useState([]);
+  const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(null);
 
   const pollsRef = useRef(null);
   const groupsRef = useRef(null);
+  const matchesRef = useRef(null);
 
   useEffect(() => {
     async function load() {
@@ -324,6 +412,24 @@ export default function Discover() {
       try {
         const acts = await getRecentActivity(10);
         setActivity(acts);
+      } catch {}
+      // Matches are public
+      try {
+        const now = new Date();
+        const all = await getMatches();
+        const upcoming = all
+          .filter((m) => {
+            if (m.status === 'completed') return false;
+            const t = m.kickoffTime?.toDate ? m.kickoffTime.toDate() : new Date(m.kickoffTime);
+            return t > now;
+          })
+          .sort((a, b) => {
+            const ta = a.kickoffTime?.toDate ? a.kickoffTime.toDate() : new Date(a.kickoffTime);
+            const tb = b.kickoffTime?.toDate ? b.kickoffTime.toDate() : new Date(b.kickoffTime);
+            return ta - tb;
+          })
+          .slice(0, 8);
+        setMatches(upcoming);
       } catch {}
     }
     load();
@@ -370,6 +476,7 @@ export default function Discover() {
 
           <div className="hidden sm:flex items-center gap-0.5">
             <Link to="/" className="px-3 py-2 rounded-xl text-[13px] font-medium" style={{ color: 'var(--c-t2)' }}>Home</Link>
+            <button onClick={() => scrollTo(matchesRef)} className="px-3 py-2 rounded-xl text-[13px] font-medium" style={{ color: 'var(--c-t2)' }}>Matches</button>
             <button onClick={() => scrollTo(pollsRef)} className="px-3 py-2 rounded-xl text-[13px] font-medium" style={{ color: 'var(--c-t2)' }}>Polls</button>
             <button onClick={() => scrollTo(groupsRef)} className="px-3 py-2 rounded-xl text-[13px] font-medium" style={{ color: 'var(--c-t2)' }}>Groups</button>
             <Link to="/activity" className="px-3 py-2 rounded-xl text-[13px] font-medium" style={{ color: 'var(--c-t2)' }}>Activity</Link>
@@ -468,6 +575,36 @@ export default function Discover() {
             </div>
             <ActivityCarousel items={activity} />
           </div>
+        </section>
+      )}
+
+      {/* ── Upcoming Matches ── */}
+      {(matches.length > 0 || loading) && (
+        <section ref={matchesRef} className="max-w-6xl mx-auto px-4 sm:px-6 py-16">
+          <div className="flex items-end justify-between mb-8">
+            <div>
+              <p className="text-[12px] font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--c-primary)' }}>Coming Up</p>
+              <h2 className="text-[26px] font-black" style={{ color: 'var(--c-t1)' }}>Upcoming Matches</h2>
+            </div>
+            {!loading && matches.length > 0 && (
+              <span className="text-[12px] font-semibold px-3 py-1 rounded-full"
+                style={{ background: 'var(--c-primary-bg)', color: 'var(--c-primary)', border: '1px solid var(--c-primary-bd)' }}>
+                Next {matches.length}
+              </span>
+            )}
+          </div>
+
+          {loading ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="rounded-2xl h-36 animate-pulse" style={{ background: 'var(--c-surface)' }} />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+              {matches.map((m) => <MatchCard key={m.id} match={m} />)}
+            </div>
+          )}
         </section>
       )}
 
