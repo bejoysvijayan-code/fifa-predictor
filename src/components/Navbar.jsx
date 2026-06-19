@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useGroup } from '../contexts/GroupContext';
+import { useHouses } from '../contexts/HouseContext';
 import ThemeToggle from './ThemeToggle';
 
 function IconHome() {
@@ -119,7 +120,9 @@ function MoreDropdown({ items, isAnyActive }) {
 
 export default function Navbar() {
   const { user, logout } = useAuth();
-  const { activeGroup, myGroups } = useGroup();
+  const { activeGroup, myGroups, myProfile } = useGroup();
+  const { houseColorMap } = useHouses();
+  const houseColor = (myProfile?.houseId && houseColorMap[myProfile.houseId]) || 'var(--c-primary)';
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -142,10 +145,10 @@ export default function Navbar() {
 
   const avatar = user?.photoURL ? (
     <img src={user.photoURL} alt={user.displayName} className="w-8 h-8 rounded-full"
-      style={{ border: '2px solid var(--c-border-s)' }} />
+      style={{ border: `2px solid ${houseColor}` }} />
   ) : (
     <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold"
-      style={{ background: 'var(--c-primary)', color: '#fff' }}>
+      style={{ background: houseColor, color: '#fff' }}>
       {user?.displayName?.[0] || '?'}
     </div>
   );

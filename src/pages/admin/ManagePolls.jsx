@@ -237,9 +237,12 @@ export default function ManagePolls() {
     catch (e) { flash({ text: 'Result saved but poll points recalculation failed.', error: true }); }
   }
   async function handleDelete(pollId) {
-    await deletePoll(pollId);
-    setPolls((prev) => prev.filter((p) => p.id !== pollId));
-    setConfirmDelete(null);
+    try {
+      await deletePoll(pollId);
+    } finally {
+      setPolls((prev) => prev.filter((p) => p.id !== pollId));
+      setConfirmDelete(null);
+    }
   }
 
   function flash(m) { setMsg(m); setTimeout(() => setMsg(null), 5000); }

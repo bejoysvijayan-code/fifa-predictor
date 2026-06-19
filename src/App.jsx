@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { GroupProvider, useGroup } from './contexts/GroupContext';
+import { HouseProvider } from './contexts/HouseContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Navbar from './components/Navbar';
 
@@ -106,6 +107,7 @@ export default function App() {
     <ThemeProvider>
       <AuthProvider>
         <GroupProvider>
+        <HouseProvider>
           <BrowserRouter basename={import.meta.env.BASE_URL}>
             <Routes>
               <Route path="/" element={<SmartRoot />} />
@@ -129,6 +131,7 @@ export default function App() {
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </BrowserRouter>
+        </HouseProvider>
         </GroupProvider>
       </AuthProvider>
     </ThemeProvider>

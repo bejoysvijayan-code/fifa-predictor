@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { sortLeaderboard } from '../utils/scoring';
 import { useAuth } from '../contexts/AuthContext';
+import UserAvatar from './UserAvatar';
 
 const PODIUM = [
   { emoji: '🥇', bg: 'var(--c-gold-bg)',           border: 'var(--c-gold-bd)',           color: 'var(--c-gold)' },
@@ -71,21 +72,7 @@ export default function LeaderboardTable({ users }) {
             >
               <div className="text-2xl mb-2">{p.emoji}</div>
 
-              {u.photoURL ? (
-                <img
-                  src={u.photoURL}
-                  alt={u.displayName}
-                  className="w-10 h-10 rounded-full mb-2"
-                  style={{ border: `2px solid ${p.border}` }}
-                />
-              ) : (
-                <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold mb-2"
-                  style={{ background: 'var(--c-primary)', color: '#fff' }}
-                >
-                  {u.displayName?.[0] || '?'}
-                </div>
-              )}
+              <UserAvatar user={u} className="w-10 h-10 mb-2" imgStyle={{ border: `2px solid ${p.border}` }} />
 
               <div className="text-[12px] font-semibold truncate w-full" style={{ color: 'var(--c-t1)' }}>
                 {u.displayName?.split(' ')[0]}
@@ -133,16 +120,7 @@ export default function LeaderboardTable({ users }) {
 
                 {/* Avatar + name */}
                 <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                  {u.photoURL ? (
-                    <img src={u.photoURL} alt={u.displayName} className="w-7 h-7 rounded-full flex-shrink-0" />
-                  ) : (
-                    <div
-                      className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
-                      style={{ background: 'var(--c-primary)', color: '#fff' }}
-                    >
-                      {u.displayName?.[0] || '?'}
-                    </div>
-                  )}
+                  <UserAvatar user={u} className="w-7 h-7" />
                   <span
                     className="text-[13px] font-medium truncate"
                     style={{ color: isMe ? 'var(--c-primary)' : 'var(--c-t1)' }}

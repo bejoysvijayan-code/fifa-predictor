@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useGroup } from '../contexts/GroupContext';
 import { getAllUsers, getAllPredictions, getMatches, getHouses, getLeaderboardSettings } from '../firebase/services';
 import LeaderboardTable from '../components/LeaderboardTable';
+import UserAvatar from '../components/UserAvatar';
 import { sortLeaderboard } from '../utils/scoring';
 
 const HOUSE_COLORS = {
@@ -31,7 +32,7 @@ function HouseLeaderboard({ members }) {
 
   const ranked = houses.map((h) => {
     const houseMembers = members.filter((u) => u.houseId === h.id);
-    const totalPoints = houseMembers.reduce((sum, u) => sum + (u.totalPoints || 0), 0);
+    const totalPoints = Math.round(houseMembers.reduce((sum, u) => sum + (u.totalPoints || 0), 0) * 10) / 10;
     const totalCorrect = houseMembers.reduce((sum, u) => sum + (u.correctPredictions || 0), 0);
     const sorted = sortLeaderboard(houseMembers);
     return { ...h, members: sorted, totalPoints, totalCorrect };
@@ -77,14 +78,7 @@ function HouseLeaderboard({ members }) {
                     <span className="text-[12px] font-bold w-5 text-center" style={{ color: 'var(--c-t3)' }}>
                       {idx + 1}
                     </span>
-                    {u.photoURL ? (
-                      <img src={u.photoURL} className="w-7 h-7 rounded-full flex-shrink-0" alt="" />
-                    ) : (
-                      <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
-                        style={{ background: h.color, color: '#fff' }}>
-                        {u.displayName?.[0] || '?'}
-                      </div>
-                    )}
+                    <UserAvatar user={u} className="w-7 h-7" imgStyle={{ border: `2px solid ${h.color}` }} />
                     <Link to={`/profile/${u.uid || u.id}`}
                       className="flex-1 text-[13px] font-medium truncate hover:underline"
                       style={{ color: 'var(--c-t1)' }}>
@@ -241,7 +235,7 @@ export default function Leaderboard() {
     : users;
 
   const groupMembers = includePollPoints
-    ? rawMembers.map((u) => ({ ...u, totalPoints: (u.totalPoints || 0) + (u.pollPoints || 0) }))
+    ? rawMembers.map((u) => ({ ...u, totalPoints: Math.round(((u.totalPoints || 0) + (u.pollPoints || 0)) * 10) / 10 }))
     : rawMembers;
 
   const isGroupAdmin = (activeGroup?.adminIds || []).includes(user?.uid);

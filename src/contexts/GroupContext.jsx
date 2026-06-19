@@ -7,6 +7,7 @@ const GroupContext = createContext(null);
 export function GroupProvider({ children }) {
   const { user } = useAuth();
   const [myGroups, setMyGroups] = useState([]);
+  const [myProfile, setMyProfile] = useState(null);
   const [activeGroupId, setActiveGroupIdState] = useState(
     () => localStorage.getItem('activeGroupId') || null
   );
@@ -20,6 +21,7 @@ export function GroupProvider({ children }) {
     }
     setLoading(true);
     Promise.all([getGroups(), getUser(user.uid)]).then(([groups, me]) => {
+      setMyProfile(me || null);
       const memberOf = new Set(me?.groupIds || []);
       const mine = groups.filter(
         (g) => memberOf.has(g.id) || (g.adminIds || []).includes(user.uid)
@@ -55,7 +57,7 @@ export function GroupProvider({ children }) {
   const activeGroup = myGroups.find((g) => g.id === activeGroupId) || null;
 
   return (
-    <GroupContext.Provider value={{ myGroups, activeGroup, activeGroupId, setActiveGroupId, loading }}>
+    <GroupContext.Provider value={{ myGroups, myProfile, activeGroup, activeGroupId, setActiveGroupId, loading }}>
       {children}
     </GroupContext.Provider>
   );

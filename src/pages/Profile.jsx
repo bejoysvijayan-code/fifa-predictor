@@ -197,10 +197,10 @@ export default function Profile() {
         {photoURL ? (
           <img src={photoURL} alt={name}
             className="w-20 h-20 rounded-full"
-            style={{ border: '3px solid var(--c-primary)' }} />
+            style={{ border: `3px solid ${house?.color || 'var(--c-primary)'}` }} />
         ) : (
           <div className="w-20 h-20 rounded-full flex items-center justify-center text-3xl font-bold"
-            style={{ background: 'var(--c-primary)', color: '#fff' }}>
+            style={{ background: house?.color || 'var(--c-primary)', color: '#fff' }}>
             {name?.[0] || '?'}
           </div>
         )}

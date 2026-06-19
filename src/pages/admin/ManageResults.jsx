@@ -233,6 +233,7 @@ export default function ManageResults() {
                   <ScoreEntry match={m} onSave={handleSetScore} />
                 </div>
 
+
                 {/* Manual fallback buttons */}
                 <div>
                   <div className="text-xs font-semibold mb-2" style={{ color: 'var(--c-t3)' }}>
