@@ -226,7 +226,7 @@ export default function Leaderboard() {
       getAllUsers().then((all) => all.filter((u) => !u.hideFromLeaderboard)),
       getAllPredictions(),
       getMatches(),
-      getLeaderboardSettings(),
+      getLeaderboardSettings().catch(() => ({ includePollPoints: false })),
     ]).then(([allUsers, preds, matches, settings]) => {
       setUsers(allUsers);
       setAllPreds(preds);

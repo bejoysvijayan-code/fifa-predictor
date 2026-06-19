@@ -82,7 +82,10 @@ export default function ManagePolls() {
   const [recalculating, setRecalculating] = useState(false);
 
   useEffect(() => {
-    Promise.all([getGroups(), getLeaderboardSettings()]).then(([g, settings]) => {
+    Promise.all([
+      getGroups(),
+      getLeaderboardSettings().catch(() => ({ includePollPoints: false })),
+    ]).then(([g, settings]) => {
       setGroups(g);
       if (g.length === 1) setSelectedGroupId(g[0].id);
       setIncludePollPoints(settings.includePollPoints || false);
