@@ -358,44 +358,24 @@ export async function recalculateLeaderboard() {
     kickoffMap[m.id] = m.kickoffTime?.toDate ? m.kickoffTime.toDate() : new Date(m.kickoffTime);
   });
 
-  // Helper: skip late predictions
-  function isLate(p) {
-    if (!p.predictionTime) return false;
-    const predTime = p.predictionTime.toDate ? p.predictionTime.toDate() : new Date(p.predictionTime);
-    const kickoff = kickoffMap[p.matchId];
-    return !!(kickoff && predTime >= kickoff);
-  }
-
-  // First pass: count valid votes per match per outcome
-  const voteCountMap = {}; // { matchId: { normalizedPrediction: count } }
-  const totalVoteMap = {}; // { matchId: totalValidVotes }
   predictions.forEach((p) => {
-    if (!completedIds.has(p.matchId) || isLate(p)) return;
-    if (!voteCountMap[p.matchId]) { voteCountMap[p.matchId] = {}; totalVoteMap[p.matchId] = 0; }
-    const norm = normalizeTeamName(p.prediction);
-    voteCountMap[p.matchId][norm] = (voteCountMap[p.matchId][norm] || 0) + 1;
-    totalVoteMap[p.matchId] += 1;
-  });
+    if (!completedIds.has(p.matchId)) return;
 
-  // Second pass: award dynamic points — (3 × losers) / winners
-  predictions.forEach((p) => {
-    if (!completedIds.has(p.matchId) || isLate(p)) return;
+    // Skip predictions made at or after kickoff
+    if (p.predictionTime) {
+      const predTime = p.predictionTime.toDate ? p.predictionTime.toDate() : new Date(p.predictionTime);
+      const kickoff = kickoffMap[p.matchId];
+      if (kickoff && predTime >= kickoff) return;
+    }
 
     const uid = p.userId;
     if (!statsMap[uid]) {
       statsMap[uid] = { correctPredictions: 0, totalPredictions: 0, totalPoints: 0 };
     }
     statsMap[uid].totalPredictions += 1;
-
     if (normalizeTeamName(resultMap[p.matchId]) === normalizeTeamName(p.prediction)) {
       statsMap[uid].correctPredictions += 1;
-      const total = totalVoteMap[p.matchId] || 0;
-      const winners = voteCountMap[p.matchId][normalizeTeamName(p.prediction)] || 0;
-      const losers = total - winners;
-      if (winners > 0 && losers > 0) {
-        statsMap[uid].totalPoints += (3 * losers) / winners;
-      }
-      // losers === 0 means everyone picked correctly → 0 points (obvious outcome)
+      statsMap[uid].totalPoints += 3;
     }
   });
 
@@ -408,7 +388,7 @@ export async function recalculateLeaderboard() {
     batch.update(doc(db, 'users', uid), {
       correctPredictions: stats.correctPredictions,
       totalPredictions: stats.totalPredictions,
-      totalPoints: Math.round(stats.totalPoints * 100) / 100,
+      totalPoints: stats.totalPoints,
       accuracyPercentage: accuracy,
     });
   });
