@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Timestamp } from 'firebase/firestore';
-import { getGroups, getPolls, createPoll, updatePoll, deletePoll, getPollVotes } from '../../firebase/services';
+import { getGroups, getPolls, createPoll, updatePoll, deletePoll, getPollVotes, recalculatePollPoints, getLeaderboardSettings, setLeaderboardSettings } from '../../firebase/services';
 
-const EMPTY_FORM = { question: '', type: 'prediction', showResults: 'after_vote', deadline: '', allowCustomOptions: false };
+const EMPTY_FORM = { question: '', type: 'prediction', showResults: 'after_vote', deadline: '', allowCustomOptions: false, points: 1 };
 
 const inpStyle = {
   background: 'var(--c-inp)', border: '1px solid var(--c-inp-bd)',
@@ -75,17 +75,36 @@ export default function ManagePolls() {
   const [msg, setMsg] = useState(null);
   const [settingResult, setSettingResult] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
-  const [editingPoll, setEditingPoll] = useState(null); // { id, form, options }
+  const [editingPoll, setEditingPoll] = useState(null);
   const [savingEdit, setSavingEdit] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [includePollPoints, setIncludePollPoints] = useState(false);
+  const [recalculating, setRecalculating] = useState(false);
 
   useEffect(() => {
-    getGroups().then((g) => {
+    Promise.all([getGroups(), getLeaderboardSettings()]).then(([g, settings]) => {
       setGroups(g);
       if (g.length === 1) setSelectedGroupId(g[0].id);
+      setIncludePollPoints(settings.includePollPoints || false);
       setLoading(false);
     });
   }, []);
+
+  async function handleTogglePollPoints(val) {
+    setIncludePollPoints(val);
+    await setLeaderboardSettings({ includePollPoints: val });
+    flash({ text: val ? '✅ Poll points included in leaderboard.' : 'Poll points excluded from leaderboard.' });
+  }
+
+  async function handleRecalculate() {
+    setRecalculating(true);
+    try {
+      await recalculatePollPoints();
+      flash({ text: '✅ Poll points recalculated!' });
+    } catch (err) {
+      flash({ text: `Error: ${err.message}`, error: true });
+    } finally { setRecalculating(false); }
+  }
 
   useEffect(() => {
     if (!selectedGroupId) { setPolls([]); return; }
@@ -130,6 +149,7 @@ export default function ManagePolls() {
         showResults: form.showResults,
         allowCustomOptions: form.allowCustomOptions,
         deadline: form.deadline ? Timestamp.fromDate(new Date(form.deadline)) : null,
+        points: Number(form.points) || 1,
       });
       flash({ text: '✅ Poll created!' });
       setForm(EMPTY_FORM);
@@ -150,6 +170,7 @@ export default function ManagePolls() {
         showResults: p.showResults,
         allowCustomOptions: p.allowCustomOptions || false,
         deadline: toDatetimeLocal(p.deadline),
+        points: p.points || 1,
       },
       options: [...p.options],
     });
@@ -182,6 +203,7 @@ export default function ManagePolls() {
         showResults: editingPoll.form.showResults,
         allowCustomOptions: editingPoll.form.allowCustomOptions,
         deadline: editingPoll.form.deadline ? Timestamp.fromDate(new Date(editingPoll.form.deadline)) : null,
+        points: editingPoll.form.type === 'prediction' ? (Number(editingPoll.form.points) || 1) : 0,
       });
       setPolls((prev) => prev.map((p) => p.id === editingPoll.id ? {
         ...p,
@@ -208,6 +230,8 @@ export default function ManagePolls() {
     await updatePoll(pollId, { result, status: 'closed' });
     setPolls((prev) => prev.map((p) => p.id === pollId ? { ...p, result, status: 'closed' } : p));
     setSettingResult(null);
+    try { await recalculatePollPoints(); flash({ text: '✅ Result saved & poll points recalculated.' }); }
+    catch (e) { flash({ text: 'Result saved but poll points recalculation failed.', error: true }); }
   }
   async function handleDelete(pollId) {
     await deletePoll(pollId);
@@ -231,6 +255,23 @@ export default function ManagePolls() {
           </select>
         </div>
       )}
+
+      {/* Poll Points Settings */}
+      <div className="card space-y-3">
+        <h2 className="text-sm font-bold uppercase tracking-wide" style={{ color: 'var(--c-t2)' }}>Open Poll Points</h2>
+        <ToggleSwitch
+          name="includePollPoints"
+          checked={includePollPoints}
+          onChange={(e) => handleTogglePollPoints(e.target.checked)}
+          label="Include poll points in leaderboard"
+          hint="When ON, poll points are added to match prediction points in the leaderboard"
+        />
+        <button onClick={handleRecalculate} disabled={recalculating}
+          className="px-4 py-2 rounded-lg text-xs font-semibold disabled:opacity-40"
+          style={{ background: 'var(--c-gold-bg)', border: '1px solid var(--c-gold-bd)', color: 'var(--c-gold)' }}>
+          {recalculating ? 'Recalculating…' : '🔄 Recalculate Poll Points'}
+        </button>
+      </div>
 
       {/* Create form */}
       <div className="card">
@@ -258,9 +299,18 @@ export default function ManagePolls() {
               </select>
             </div>
           </div>
-          <div>
-            <label className="text-xs block mb-1" style={{ color: 'var(--c-t2)' }}>Deadline (optional)</label>
-            <input type="datetime-local" name="deadline" value={form.deadline} onChange={handleFormChange} style={inpStyle} />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs block mb-1" style={{ color: 'var(--c-t2)' }}>Deadline (optional)</label>
+              <input type="datetime-local" name="deadline" value={form.deadline} onChange={handleFormChange} style={inpStyle} />
+            </div>
+            {form.type === 'prediction' && (
+              <div>
+                <label className="text-xs block mb-1" style={{ color: 'var(--c-t2)' }}>Points value</label>
+                <input type="number" name="points" value={form.points} onChange={handleFormChange}
+                  min="1" max="20" style={inpStyle} />
+              </div>
+            )}
           </div>
           <ToggleSwitch name="allowCustomOptions" checked={form.allowCustomOptions} onChange={handleFormChange}
             label="Allow custom answers" hint="Members can type their own answer if not in the list" />
@@ -328,6 +378,7 @@ export default function ManagePolls() {
                           <span>{p.type === 'prediction' ? '🎯 Prediction' : '📊 Opinion'}</span>
                           <span>·</span>
                           <span>{voteCount} votes</span>
+                          {p.type === 'prediction' && <><span>·</span><span style={{ color: 'var(--c-gold)' }}>{p.points || 1} pts</span></>}
                           {p.allowCustomOptions && <><span>·</span><span>Custom answers ON</span></>}
                           {hasResult && <><span>·</span><span style={{ color: 'var(--c-green)' }}>✓ {p.result}</span></>}
                         </div>
@@ -383,9 +434,18 @@ export default function ManagePolls() {
                             </select>
                           </div>
                         </div>
-                        <div>
-                          <label className="text-xs block mb-1" style={{ color: 'var(--c-t2)' }}>Deadline</label>
-                          <input type="datetime-local" name="deadline" value={editingPoll.form.deadline} onChange={handleEditFormChange} style={inpStyle} />
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-xs block mb-1" style={{ color: 'var(--c-t2)' }}>Deadline</label>
+                            <input type="datetime-local" name="deadline" value={editingPoll.form.deadline} onChange={handleEditFormChange} style={inpStyle} />
+                          </div>
+                          {editingPoll.form.type === 'prediction' && (
+                            <div>
+                              <label className="text-xs block mb-1" style={{ color: 'var(--c-t2)' }}>Points value</label>
+                              <input type="number" name="points" value={editingPoll.form.points} onChange={handleEditFormChange}
+                                min="1" max="20" style={inpStyle} />
+                            </div>
+                          )}
                         </div>
                         <label className="flex items-center gap-3 cursor-pointer select-none">
                           <div className="relative flex-shrink-0">

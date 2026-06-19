@@ -470,7 +470,7 @@ export async function mergeUsers(sourceUid, targetUid) {
 
 // ── Polls ──────────────────────────────────────────────
 
-export async function createPoll({ groupId, question, options, type, showResults, allowCustomOptions, deadline }) {
+export async function createPoll({ groupId, question, options, type, showResults, allowCustomOptions, deadline, points }) {
   const ref = doc(collection(db, 'polls'));
   await setDoc(ref, {
     groupId,
@@ -483,6 +483,7 @@ export async function createPoll({ groupId, question, options, type, showResults
     result: null,
     createdAt: serverTimestamp(),
     deadline: deadline || null,
+    points: type === 'prediction' ? (Number(points) || 1) : 0,
   });
   return ref.id;
 }
@@ -601,4 +602,48 @@ export async function deleteHouse(houseId) {
 
 export async function assignUserToHouse(userId, houseId) {
   await updateDoc(doc(db, 'users', userId), { houseId: houseId || null });
+}
+
+// ── Poll Points ────────────────────────────────────────
+
+export async function recalculatePollPoints() {
+  const [pollsSnap, votesSnap, usersSnap] = await Promise.all([
+    getDocs(collection(db, 'polls')),
+    getDocs(collection(db, 'pollVotes')),
+    getDocs(collection(db, 'users')),
+  ]);
+
+  const polls = pollsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const allVotes = votesSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const eligiblePolls = polls.filter((p) => p.type === 'prediction' && p.result && (p.points || 0) > 0);
+
+  const userPollPoints = {};
+
+  eligiblePolls.forEach((poll) => {
+    const votes = allVotes.filter((v) => v.pollId === poll.id);
+    const winners = votes.filter((v) => v.vote === poll.result);
+    const losers = votes.filter((v) => v.vote !== poll.result);
+    if (winners.length === 0 || losers.length === 0) return;
+    const pts = (poll.points * losers.length) / winners.length;
+    winners.forEach((v) => {
+      userPollPoints[v.userId] = (userPollPoints[v.userId] || 0) + pts;
+    });
+  });
+
+  const batch = writeBatch(db);
+  usersSnap.docs.forEach((userDoc) => {
+    batch.update(doc(db, 'users', userDoc.id), {
+      pollPoints: Math.round((userPollPoints[userDoc.id] || 0) * 100) / 100,
+    });
+  });
+  await batch.commit();
+}
+
+export async function getLeaderboardSettings() {
+  const snap = await getDoc(doc(db, 'settings', 'leaderboard'));
+  return snap.exists() ? snap.data() : { includePollPoints: false };
+}
+
+export async function setLeaderboardSettings(data) {
+  await setDoc(doc(db, 'settings', 'leaderboard'), data, { merge: true });
 }

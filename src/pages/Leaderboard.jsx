@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useGroup } from '../contexts/GroupContext';
-import { getAllUsers, getAllPredictions, getMatches, getHouses } from '../firebase/services';
+import { getAllUsers, getAllPredictions, getMatches, getHouses, getLeaderboardSettings } from '../firebase/services';
 import LeaderboardTable from '../components/LeaderboardTable';
 import { sortLeaderboard } from '../utils/scoring';
 
@@ -219,23 +219,30 @@ export default function Leaderboard() {
   const [allMatches, setAllMatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState('individual');
+  const [includePollPoints, setIncludePollPoints] = useState(false);
 
   useEffect(() => {
     Promise.all([
       getAllUsers().then((all) => all.filter((u) => !u.hideFromLeaderboard)),
       getAllPredictions(),
       getMatches(),
-    ]).then(([allUsers, preds, matches]) => {
+      getLeaderboardSettings(),
+    ]).then(([allUsers, preds, matches, settings]) => {
       setUsers(allUsers);
       setAllPreds(preds);
       setAllMatches(matches);
+      setIncludePollPoints(settings.includePollPoints || false);
       setLoading(false);
     });
   }, []);
 
-  const groupMembers = activeGroupId
+  const rawMembers = activeGroupId
     ? users.filter((u) => (u.groupIds || []).includes(activeGroupId))
     : users;
+
+  const groupMembers = includePollPoints
+    ? rawMembers.map((u) => ({ ...u, totalPoints: (u.totalPoints || 0) + (u.pollPoints || 0) }))
+    : rawMembers;
 
   const isGroupAdmin = (activeGroup?.adminIds || []).includes(user?.uid);
 
@@ -257,6 +264,12 @@ export default function Leaderboard() {
           <p className="text-[13px] mt-1" style={{ color: 'var(--c-t2)' }}>
             {activeGroup ? activeGroup.name : 'All members'} · {groupMembers.length} player{groupMembers.length !== 1 ? 's' : ''}
           </p>
+          {includePollPoints && (
+            <span className="text-[11px] font-medium px-2 py-0.5 rounded-full mt-1 inline-block"
+              style={{ background: 'var(--c-gold-bg)', color: 'var(--c-gold)', border: '1px solid var(--c-gold-bd)' }}>
+              🗳️ Includes poll points
+            </span>
+          )}
         </div>
         {isGroupAdmin && activeGroupId && (
           <Link to={`/group-admin/${activeGroupId}`}
