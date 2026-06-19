@@ -93,7 +93,7 @@ export default function LeaderboardTable({ users }) {
               </div>
 
               <div className="mt-2">
-                <div className="text-[16px] font-bold" style={{ color: p.color }}>{u.totalPoints} pts</div>
+                <div className="text-[16px] font-bold" style={{ color: p.color }}>{Number.isInteger(u.totalPoints) ? u.totalPoints : u.totalPoints?.toFixed(2)} pts</div>
                 <div className="text-[10px] mt-0.5" style={{ color: 'var(--c-t3)' }}>{u.totalPredictions || 0} polls</div>
               </div>
 
@@ -172,7 +172,7 @@ export default function LeaderboardTable({ users }) {
                     {u.totalPredictions || 0}p
                   </span>
                   <span className="text-[12px] font-bold" style={{ color: 'var(--c-gold)' }}>
-                    {u.totalPoints}pt
+                    {Number.isInteger(u.totalPoints) ? u.totalPoints : u.totalPoints?.toFixed(2)}pt
                   </span>
                 </div>
               </Link>
