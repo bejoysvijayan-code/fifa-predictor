@@ -170,14 +170,16 @@ function GroupTrivia({ members, allPreds, allMatches }) {
   const favTeam = Object.entries(teamVotes).sort((a, b) => b[1] - a[1])[0];
   const favActualTeam = Object.entries(teamVotes).filter(([t]) => t !== 'Draw').sort((a, b) => b[1] - a[1])[0];
 
-  const sorted = sortLeaderboard(members);
   const mostPolls = [...members].sort(
     (a, b) => (b.totalPredictions || 0) - (a.totalPredictions || 0)
   )[0];
+  const mostAccurate = [...members]
+    .filter((u) => (u.totalPredictions || 0) > 0)
+    .sort((a, b) => (b.accuracyPercentage ?? 0) - (a.accuracyPercentage ?? 0))[0];
 
   const triviaItems = [
     { emoji: '📊', label: 'Most Active', value: mostPolls ? `${mostPolls.displayName?.split(' ')[0]} (${mostPolls.totalPredictions || 0} polls)` : null },
-    { emoji: '🎯', label: 'Top Accuracy', value: sorted[0] ? `${sorted[0].displayName?.split(' ')[0]} — ${sorted[0].accuracyPercentage ?? 0}%` : null },
+    { emoji: '🎯', label: 'Top Accuracy', value: mostAccurate ? `${mostAccurate.displayName?.split(' ')[0]} — ${mostAccurate.accuracyPercentage ?? 0}%` : null },
     { emoji: '⚽', label: "Group's Favourite Pick", value: favTeam ? `${favTeam[0]} (${favTeam[1]} picks)${favTeam[0] === 'Draw' && favActualTeam ? ` · ${favActualTeam[0]} (${favActualTeam[1]})` : ''}` : null },
     leader('nightOwl',   (v) => `${v} late-night pick${v > 1 ? 's' : ''}`) && { emoji: '🌙', label: 'Night Owl',      value: `${leader('nightOwl', (v) => v)?.name} — ${leader('nightOwl', (v) => `${v} after midnight`)?.value}` },
     leader('trigger',    (v) => `first in ${v} match${v > 1 ? 'es' : ''}`) && { emoji: '⚡', label: 'Trigger Finger', value: `${leader('trigger', (v) => v)?.name} — ${leader('trigger', (v) => `first in ${v}`)?.value}` },
