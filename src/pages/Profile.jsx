@@ -3,7 +3,6 @@ import { useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
   getUser, updateUserProfile, getUserPredictions, getMatches, getAllPredictions, getGroups, getHouses,
-  getUserPollVotes, getPollsForGroups,
 } from '../firebase/services';
 import { getPredictionStatus, getFlag } from '../utils/scoring';
 
@@ -108,7 +107,6 @@ export default function Profile() {
   const [matches, setMatches] = useState([]);
   const [selectedStat, setSelectedStat] = useState(null);
   const [house, setHouse] = useState(null);
-  const [pollParticipation, setPollParticipation] = useState(null);
   const [loading, setLoading] = useState(true);
   const [accessDenied, setAccessDenied] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -154,19 +152,6 @@ export default function Profile() {
       setLoading(false);
       if (userData?.houseId) {
         getHouses().then((hs) => setHouse(hs.find((h) => h.id === userData.houseId) || null));
-      }
-      const groupIds = userData?.groupIds || [];
-      if (groupIds.length) {
-        Promise.all([getPollsForGroups(groupIds), getUserPollVotes(targetUid)]).then(([allPolls, userVotes]) => {
-          const votedPollIds = new Set(userVotes.map((v) => v.pollId));
-          const now = new Date();
-          const closed = allPolls.filter((p) => {
-            const pastDeadline = p.deadline?.toDate && now > p.deadline.toDate();
-            return p.status === 'closed' || pastDeadline;
-          });
-          const missed = closed.filter((p) => !votedPollIds.has(p.id));
-          setPollParticipation({ total: closed.length, voted: closed.length - missed.length, missed });
-        });
       }
     });
   }, [targetUid]);
@@ -365,46 +350,66 @@ export default function Profile() {
         </div>
       )}
 
-      {/* ── Poll Participation ── */}
-      {pollParticipation && (
-        <div className="rounded-2xl p-5 space-y-3"
-          style={{ background: 'var(--c-card)', border: '1px solid var(--c-border)' }}>
-          <div className="flex items-center justify-between">
-            <div className="text-[13px] font-semibold" style={{ color: 'var(--c-t1)' }}>Poll Participation</div>
-            <span className="text-[12px] font-semibold"
-              style={{ color: pollParticipation.missed.length > 0 ? 'var(--c-orange)' : 'var(--c-green)' }}>
-              {pollParticipation.voted}/{pollParticipation.total} voted
-            </span>
-          </div>
-          <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--c-border)' }}>
-            <div className="h-full rounded-full transition-all duration-700" style={{
-              width: `${pollParticipation.total > 0 ? Math.round(pollParticipation.voted / pollParticipation.total * 100) : 0}%`,
-              background: pollParticipation.missed.length > 0 ? 'var(--c-orange)' : 'var(--c-green)',
-            }} />
-          </div>
-          {pollParticipation.missed.length === 0 ? (
-            <p className="text-[12px]" style={{ color: 'var(--c-green)' }}>✓ Voted in all closed polls</p>
-          ) : (
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--c-t3)' }}>
-                Missed ({pollParticipation.missed.length})
-              </p>
-              <div className="space-y-1.5 max-h-52 overflow-y-auto">
-                {pollParticipation.missed.map((p) => (
-                  <div key={p.id} className="flex items-center gap-2 px-3 py-2 rounded-lg text-[12px]"
-                    style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-                    <span className="flex-1 leading-snug" style={{ color: 'var(--c-t1)' }}>{p.question}</span>
-                    <span className="flex-shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
-                      style={{ background: 'var(--c-red-bg)', color: 'var(--c-red)', border: '1px solid var(--c-red-bd)' }}>
-                      missed
-                    </span>
-                  </div>
-                ))}
-              </div>
+      {/* ── Match Participation ── */}
+      {(() => {
+        const userGroupSet = new Set(profile?.groupIds || []);
+        const predMatchIds = new Set(preds.map((p) => p.matchId));
+        const completedInGroup = matches.filter((m) =>
+          m.status === 'completed' &&
+          m.result?.winner &&
+          (m.groupIds?.some((gid) => userGroupSet.has(gid)) || (!m.groupIds?.length && userGroupSet.size === 0))
+        );
+        if (!completedInGroup.length) return null;
+        const missedMatches = completedInGroup.filter((m) => !predMatchIds.has(m.id))
+          .sort((a, b) => (a.matchNumber ?? 999) - (b.matchNumber ?? 999));
+        const votedCount = completedInGroup.length - missedMatches.length;
+        return (
+          <div className="rounded-2xl p-5 space-y-3"
+            style={{ background: 'var(--c-card)', border: '1px solid var(--c-border)' }}>
+            <div className="flex items-center justify-between">
+              <div className="text-[13px] font-semibold" style={{ color: 'var(--c-t1)' }}>Match Participation</div>
+              <span className="text-[12px] font-semibold"
+                style={{ color: missedMatches.length > 0 ? 'var(--c-orange)' : 'var(--c-green)' }}>
+                {votedCount}/{completedInGroup.length} predicted
+              </span>
             </div>
-          )}
-        </div>
-      )}
+            <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--c-border)' }}>
+              <div className="h-full rounded-full transition-all duration-700" style={{
+                width: `${Math.round(votedCount / completedInGroup.length * 100)}%`,
+                background: missedMatches.length > 0 ? 'var(--c-orange)' : 'var(--c-green)',
+              }} />
+            </div>
+            {missedMatches.length === 0 ? (
+              <p className="text-[12px]" style={{ color: 'var(--c-green)' }}>✓ Predicted all completed matches</p>
+            ) : (
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--c-t3)' }}>
+                  Missed ({missedMatches.length})
+                </p>
+                <div className="space-y-1.5 max-h-52 overflow-y-auto">
+                  {missedMatches.map((m) => (
+                    <div key={m.id} className="flex items-center gap-2 px-3 py-2 rounded-lg text-[12px]"
+                      style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+                      {m.matchNumber != null && (
+                        <span className="flex-shrink-0 font-bold text-[11px] w-6 text-center" style={{ color: 'var(--c-gold)' }}>
+                          #{m.matchNumber}
+                        </span>
+                      )}
+                      <span className="flex-1 leading-snug" style={{ color: 'var(--c-t1)' }}>
+                        {getFlag(m.homeTeam)} {m.homeTeam} vs {getFlag(m.awayTeam)} {m.awayTeam}
+                      </span>
+                      <span className="flex-shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
+                        style={{ background: 'var(--c-red-bg)', color: 'var(--c-red)', border: '1px solid var(--c-red-bd)' }}>
+                        missed
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* ── Badges ── */}
       {badges && (
