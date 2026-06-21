@@ -174,7 +174,7 @@ function GroupTrivia({ members, allPreds, allMatches }) {
     (a, b) => (b.totalPredictions || 0) - (a.totalPredictions || 0)
   )[0];
   const mostAccurate = [...members]
-    .filter((u) => (u.totalPredictions || 0) > 0)
+    .filter((u) => (u.totalPredictions || 0) >= 5)
     .sort((a, b) => (b.accuracyPercentage ?? 0) - (a.accuracyPercentage ?? 0))[0];
 
   const triviaItems = [
