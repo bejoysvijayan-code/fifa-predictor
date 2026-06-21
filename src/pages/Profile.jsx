@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
   getUser, updateUserProfile, getUserPredictions, getMatches, getAllPredictions, getGroups, getHouses,
+  getUserPollVotes, getPollsForGroups,
 } from '../firebase/services';
 import { getPredictionStatus, getFlag } from '../utils/scoring';
 
@@ -107,6 +108,7 @@ export default function Profile() {
   const [matches, setMatches] = useState([]);
   const [selectedStat, setSelectedStat] = useState(null);
   const [house, setHouse] = useState(null);
+  const [pollParticipation, setPollParticipation] = useState(null);
   const [loading, setLoading] = useState(true);
   const [accessDenied, setAccessDenied] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -152,6 +154,19 @@ export default function Profile() {
       setLoading(false);
       if (userData?.houseId) {
         getHouses().then((hs) => setHouse(hs.find((h) => h.id === userData.houseId) || null));
+      }
+      const groupIds = userData?.groupIds || [];
+      if (groupIds.length) {
+        Promise.all([getPollsForGroups(groupIds), getUserPollVotes(targetUid)]).then(([allPolls, userVotes]) => {
+          const votedPollIds = new Set(userVotes.map((v) => v.pollId));
+          const now = new Date();
+          const closed = allPolls.filter((p) => {
+            const pastDeadline = p.deadline?.toDate && now > p.deadline.toDate();
+            return p.status === 'closed' || pastDeadline;
+          });
+          const missed = closed.filter((p) => !votedPollIds.has(p.id));
+          setPollParticipation({ total: closed.length, voted: closed.length - missed.length, missed });
+        });
       }
     });
   }, [targetUid]);
@@ -347,6 +362,47 @@ export default function Profile() {
               {saving ? 'Saving…' : saved ? '✓ Saved!' : 'Save Changes'}
             </button>
           </form>
+        </div>
+      )}
+
+      {/* ── Poll Participation ── */}
+      {pollParticipation && (
+        <div className="rounded-2xl p-5 space-y-3"
+          style={{ background: 'var(--c-card)', border: '1px solid var(--c-border)' }}>
+          <div className="flex items-center justify-between">
+            <div className="text-[13px] font-semibold" style={{ color: 'var(--c-t1)' }}>Poll Participation</div>
+            <span className="text-[12px] font-semibold"
+              style={{ color: pollParticipation.missed.length > 0 ? 'var(--c-orange)' : 'var(--c-green)' }}>
+              {pollParticipation.voted}/{pollParticipation.total} voted
+            </span>
+          </div>
+          <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--c-border)' }}>
+            <div className="h-full rounded-full transition-all duration-700" style={{
+              width: `${pollParticipation.total > 0 ? Math.round(pollParticipation.voted / pollParticipation.total * 100) : 0}%`,
+              background: pollParticipation.missed.length > 0 ? 'var(--c-orange)' : 'var(--c-green)',
+            }} />
+          </div>
+          {pollParticipation.missed.length === 0 ? (
+            <p className="text-[12px]" style={{ color: 'var(--c-green)' }}>✓ Voted in all closed polls</p>
+          ) : (
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--c-t3)' }}>
+                Missed ({pollParticipation.missed.length})
+              </p>
+              <div className="space-y-1.5 max-h-52 overflow-y-auto">
+                {pollParticipation.missed.map((p) => (
+                  <div key={p.id} className="flex items-center gap-2 px-3 py-2 rounded-lg text-[12px]"
+                    style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+                    <span className="flex-1 leading-snug" style={{ color: 'var(--c-t1)' }}>{p.question}</span>
+                    <span className="flex-shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
+                      style={{ background: 'var(--c-red-bg)', color: 'var(--c-red)', border: '1px solid var(--c-red-bd)' }}>
+                      missed
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 

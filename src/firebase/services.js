@@ -528,6 +528,22 @@ export async function getUserPollVote(pollId, userId) {
   return snap.empty ? null : { id: snap.docs[0].id, ...snap.docs[0].data() };
 }
 
+export async function getUserPollVotes(userId) {
+  const q = query(collection(db, 'pollVotes'), where('userId', '==', userId));
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+export async function getPollsForGroups(groupIds) {
+  if (!groupIds?.length) return [];
+  const chunks = [];
+  for (let i = 0; i < groupIds.length; i += 30) chunks.push(groupIds.slice(i, i + 30));
+  const results = await Promise.all(
+    chunks.map((chunk) => getDocs(query(collection(db, 'polls'), where('groupId', 'in', chunk), orderBy('createdAt', 'desc'))))
+  );
+  return results.flatMap((r) => r.docs.map((d) => ({ id: d.id, ...d.data() })));
+}
+
 // ── Discover / Public Groups ───────────────────────────
 
 export async function getPublicGroups() {
