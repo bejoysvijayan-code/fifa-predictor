@@ -353,58 +353,96 @@ export default function Profile() {
       {/* ── Match Participation ── */}
       {(() => {
         const userGroupSet = new Set(profile?.groupIds || []);
-        const predMatchIds = new Set(preds.map((p) => p.matchId));
+        const predByMatchId = {};
+        preds.forEach((p) => { predByMatchId[p.matchId] = p; });
         const completedInGroup = matches.filter((m) =>
           m.status === 'completed' &&
           m.result?.winner &&
           (m.groupIds?.some((gid) => userGroupSet.has(gid)) || (!m.groupIds?.length && userGroupSet.size === 0))
         );
         if (!completedInGroup.length) return null;
-        const missedMatches = completedInGroup.filter((m) => !predMatchIds.has(m.id))
-          .sort((a, b) => (a.matchNumber ?? 999) - (b.matchNumber ?? 999));
-        const votedCount = completedInGroup.length - missedMatches.length;
+
+        const missedMatches = [];
+        const lateMatches = [];
+        completedInGroup.forEach((m) => {
+          const pred = predByMatchId[m.id];
+          if (!pred) { missedMatches.push(m); return; }
+          const raw = pred.predictionTime || pred.timestamp;
+          const predTime = raw?.toDate ? raw.toDate() : raw ? new Date(raw) : null;
+          const kickoff = m.kickoffTime?.toDate ? m.kickoffTime.toDate() : m.kickoffTime ? new Date(m.kickoffTime) : null;
+          if (predTime && kickoff && predTime > kickoff) lateMatches.push(m);
+        });
+        missedMatches.sort((a, b) => (a.matchNumber ?? 999) - (b.matchNumber ?? 999));
+        lateMatches.sort((a, b) => (a.matchNumber ?? 999) - (b.matchNumber ?? 999));
+
+        const onTimeCount = completedInGroup.length - missedMatches.length - lateMatches.length;
+        const allGood = missedMatches.length === 0 && lateMatches.length === 0;
+
+        const matchRow = (m, badge) => (
+          <div key={m.id} className="flex items-center gap-2 px-3 py-2 rounded-lg text-[12px]"
+            style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+            {m.matchNumber != null && (
+              <span className="flex-shrink-0 font-bold text-[11px] w-6 text-center" style={{ color: 'var(--c-gold)' }}>
+                #{m.matchNumber}
+              </span>
+            )}
+            <span className="flex-1 leading-snug" style={{ color: 'var(--c-t1)' }}>
+              {getFlag(m.homeTeam)} {m.homeTeam} vs {getFlag(m.awayTeam)} {m.awayTeam}
+            </span>
+            {badge}
+          </div>
+        );
+
         return (
           <div className="rounded-2xl p-5 space-y-3"
             style={{ background: 'var(--c-card)', border: '1px solid var(--c-border)' }}>
             <div className="flex items-center justify-between">
               <div className="text-[13px] font-semibold" style={{ color: 'var(--c-t1)' }}>Match Participation</div>
               <span className="text-[12px] font-semibold"
-                style={{ color: missedMatches.length > 0 ? 'var(--c-orange)' : 'var(--c-green)' }}>
-                {votedCount}/{completedInGroup.length} predicted
+                style={{ color: allGood ? 'var(--c-green)' : 'var(--c-orange)' }}>
+                {onTimeCount + lateMatches.length}/{completedInGroup.length} predicted
               </span>
             </div>
             <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--c-border)' }}>
               <div className="h-full rounded-full transition-all duration-700" style={{
-                width: `${Math.round(votedCount / completedInGroup.length * 100)}%`,
-                background: missedMatches.length > 0 ? 'var(--c-orange)' : 'var(--c-green)',
+                width: `${Math.round((onTimeCount + lateMatches.length) / completedInGroup.length * 100)}%`,
+                background: allGood ? 'var(--c-green)' : 'var(--c-orange)',
               }} />
             </div>
-            {missedMatches.length === 0 ? (
+            {allGood ? (
               <p className="text-[12px]" style={{ color: 'var(--c-green)' }}>✓ Predicted all completed matches</p>
             ) : (
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--c-t3)' }}>
-                  Missed ({missedMatches.length})
-                </p>
-                <div className="space-y-1.5 max-h-52 overflow-y-auto">
-                  {missedMatches.map((m) => (
-                    <div key={m.id} className="flex items-center gap-2 px-3 py-2 rounded-lg text-[12px]"
-                      style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
-                      {m.matchNumber != null && (
-                        <span className="flex-shrink-0 font-bold text-[11px] w-6 text-center" style={{ color: 'var(--c-gold)' }}>
-                          #{m.matchNumber}
+              <div className="space-y-3">
+                {lateMatches.length > 0 && (
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--c-t3)' }}>
+                      Voted Late ({lateMatches.length})
+                    </p>
+                    <div className="space-y-1.5 max-h-52 overflow-y-auto">
+                      {lateMatches.map((m) => matchRow(m,
+                        <span className="flex-shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
+                          style={{ background: 'var(--c-orange-bg, rgba(251,146,60,0.12))', color: 'var(--c-orange)', border: '1px solid var(--c-orange)' }}>
+                          voted late
                         </span>
-                      )}
-                      <span className="flex-1 leading-snug" style={{ color: 'var(--c-t1)' }}>
-                        {getFlag(m.homeTeam)} {m.homeTeam} vs {getFlag(m.awayTeam)} {m.awayTeam}
-                      </span>
-                      <span className="flex-shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
-                        style={{ background: 'var(--c-red-bg)', color: 'var(--c-red)', border: '1px solid var(--c-red-bd)' }}>
-                        missed
-                      </span>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </div>
+                )}
+                {missedMatches.length > 0 && (
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide mb-2" style={{ color: 'var(--c-t3)' }}>
+                      Missed ({missedMatches.length})
+                    </p>
+                    <div className="space-y-1.5 max-h-52 overflow-y-auto">
+                      {missedMatches.map((m) => matchRow(m,
+                        <span className="flex-shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
+                          style={{ background: 'var(--c-red-bg)', color: 'var(--c-red)', border: '1px solid var(--c-red-bd)' }}>
+                          missed
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
