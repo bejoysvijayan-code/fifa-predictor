@@ -167,21 +167,46 @@ function GroupTrivia({ members, allPreds, allMatches }) {
     if (!memberIds.has(p.userId)) return;
     teamVotes[p.prediction] = (teamVotes[p.prediction] || 0) + 1;
   });
-  const favTeam = Object.entries(teamVotes).sort((a, b) => b[1] - a[1])[0];
+  const topTeams = Object.entries(teamVotes).sort((a, b) => b[1] - a[1]).slice(0, 3);
+  const favTeam = topTeams[0];
   const favActualTeam = Object.entries(teamVotes).filter(([t]) => t !== 'Draw').sort((a, b) => b[1] - a[1])[0];
 
   const mostPolls = [...members].sort(
     (a, b) => (b.totalPredictions || 0) - (a.totalPredictions || 0)
   )[0];
+
+  let mostPollsNote = null;
+  if (mostPolls) {
+    const uid = mostPolls.uid || mostPolls.id;
+    const userPreds = allPreds.filter((p) => p.userId === uid);
+    const userPredMatchIds = new Set(userPreds.map((p) => p.matchId));
+    let lateCount = 0;
+    userPreds.forEach((p) => {
+      const match = matchMap[p.matchId];
+      if (!match) return;
+      const raw = p.predictionTime || p.timestamp;
+      const predTime = raw?.toDate ? raw.toDate() : raw ? new Date(raw) : null;
+      const kickoff = match.kickoffTime?.toDate ? match.kickoffTime.toDate() : match.kickoffTime ? new Date(match.kickoffTime) : null;
+      if (predTime && kickoff && predTime > kickoff) lateCount++;
+    });
+    const completedMatches = allMatches.filter((m) => m.status === 'completed' && m.result?.winner);
+    const missedCount = completedMatches.filter((m) => !userPredMatchIds.has(m.id)).length;
+    const correct = mostPolls.correctPredictions || 0;
+    const parts = [`${correct} correct`];
+    if (lateCount > 0) parts.push(`${lateCount} late`);
+    if (missedCount > 0) parts.push(`${missedCount} missed`);
+    mostPollsNote = parts.join(' · ');
+  }
+
   const mostAccurate = [...members]
     .filter((u) => (u.totalPredictions || 0) >= 5)
     .sort((a, b) => (b.accuracyPercentage ?? 0) - (a.accuracyPercentage ?? 0))[0];
 
   const triviaItems = [
-    { emoji: '📊', label: 'Most Active', value: mostPolls ? `${mostPolls.displayName?.split(' ')[0]} (${mostPolls.totalPredictions || 0} polls)` : null },
-    { emoji: '🎯', label: 'Top Accuracy', value: mostAccurate ? `${mostAccurate.displayName?.split(' ')[0]} — ${mostAccurate.accuracyPercentage ?? 0}%` : null },
-    { emoji: '⚽', label: "Group's Favourite Pick", value: favTeam ? `${favTeam[0]} (${favTeam[1]} picks)${favTeam[0] === 'Draw' && favActualTeam ? ` · ${favActualTeam[0]} (${favActualTeam[1]})` : ''}` : null },
-    leader('nightOwl',   (v) => `${v} late-night pick${v > 1 ? 's' : ''}`) && { emoji: '🌙', label: 'Night Owl',      value: `${leader('nightOwl', (v) => v)?.name} — ${leader('nightOwl', (v) => `${v} after midnight`)?.value}` },
+    { emoji: '📊', label: 'Most Active', value: mostPolls ? `${mostPolls.displayName?.split(' ')[0]} (${mostPolls.totalPredictions || 0} polls)` : null, note: mostPollsNote },
+    { emoji: '🎯', label: 'Top Accuracy', value: mostAccurate ? `${mostAccurate.displayName?.split(' ')[0]} — ${mostAccurate.accuracyPercentage ?? 0}%` : null, note: mostAccurate ? `${mostAccurate.totalPredictions || 0} polls · ${mostAccurate.correctPredictions || 0} correct` : null },
+    { emoji: '⚽', label: "Group's Favourite Pick", value: favTeam ? topTeams.map(([t, c]) => `${t} (${c})`).join(' · ') : null },
+    leader('nightOwl',   (v) => `${v} late-night pick${v > 1 ? 's' : ''}`) && { emoji: '🌙', label: 'Night Owl',      value: `${leader('nightOwl', (v) => v)?.name} — ${leader('nightOwl', (v) => `${v} after midnight`)?.value}`, note: 'Voted between 10PM to 6AM' },
     leader('trigger',    (v) => `first in ${v} match${v > 1 ? 'es' : ''}`) && { emoji: '⚡', label: 'Trigger Finger', value: `${leader('trigger', (v) => v)?.name} — ${leader('trigger', (v) => `first in ${v}`)?.value}` },
     leader('contrarian', (v) => `${v} against crowd`)                       && { emoji: '🦅', label: 'Contrarian',     value: `${leader('contrarian', (v) => v)?.name} — ${leader('contrarian', (v) => `${v} picks against crowd`)?.value}` },
   ].filter(Boolean).filter((t) => t.value);
@@ -193,13 +218,14 @@ function GroupTrivia({ members, allPreds, allMatches }) {
       style={{ background: 'var(--c-card)', border: '1px solid var(--c-border)' }}>
       <div className="text-[13px] font-semibold" style={{ color: 'var(--c-t1)' }}>Group Trivia</div>
       <div className="space-y-2">
-        {triviaItems.map(({ emoji, label, value }) => (
+        {triviaItems.map(({ emoji, label, value, note }) => (
           <div key={label} className="flex items-start gap-3 rounded-xl px-3 py-2.5"
             style={{ background: 'var(--c-surface)' }}>
             <span className="text-lg flex-shrink-0">{emoji}</span>
             <div>
               <div className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--c-t3)' }}>{label}</div>
               <div className="text-[13px] font-medium" style={{ color: 'var(--c-t1)' }}>{value}</div>
+              {note && <div className="text-[11px] mt-0.5" style={{ color: 'var(--c-t3)' }}>{note}</div>}
             </div>
           </div>
         ))}
