@@ -5,7 +5,7 @@ import { useGroup } from '../contexts/GroupContext';
 import { getAllUsers, getAllPredictions, getMatches, getHouses, getLeaderboardSettings } from '../firebase/services';
 import LeaderboardTable from '../components/LeaderboardTable';
 import UserAvatar from '../components/UserAvatar';
-import { sortLeaderboard } from '../utils/scoring';
+import { sortLeaderboard, normalizeTeamName } from '../utils/scoring';
 
 const HOUSE_COLORS = {
   '#EF4444': { bg: 'rgba(239,68,68,0.12)',   border: 'rgba(239,68,68,0.35)' },
@@ -280,7 +280,7 @@ export default function Leaderboard() {
     const predsByMatch = userPredMap[uid] || {};
     let currentStreak = 0;
     for (const m of completedByRecent) {
-      if (predsByMatch[m.id] === m.result.winner) currentStreak++;
+      if (normalizeTeamName(predsByMatch[m.id]) === normalizeTeamName(m.result.winner)) currentStreak++;
       else break;
     }
     return { ...u, currentStreak };
