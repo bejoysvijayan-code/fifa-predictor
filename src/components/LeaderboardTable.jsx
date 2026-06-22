@@ -85,6 +85,11 @@ export default function LeaderboardTable({ users }) {
               </div>
 
               <TickX correct={u.correctPredictions || 0} wrong={wrong} />
+              {u.currentStreak > 0 && (
+                <div className="mt-2 text-[11px] font-bold" style={{ color: 'var(--c-orange)' }}>
+                  🔥 {u.currentStreak} streak
+                </div>
+              )}
             </Link>
           );
         })}
@@ -130,7 +135,7 @@ export default function LeaderboardTable({ users }) {
                   </span>
                 </div>
 
-                {/* Stats: ✓ wrong pts */}
+                {/* Stats: ✓ wrong pts streak */}
                 <div className="flex items-center gap-3 flex-shrink-0">
                   <span className="flex items-center gap-1 text-[12px] font-bold" style={{ color: 'var(--c-green)' }}>
                     <svg width="13" height="13" viewBox="0 0 12 12" fill="none">
@@ -146,9 +151,11 @@ export default function LeaderboardTable({ users }) {
                     </svg>
                     {wrong}
                   </span>
-                  <span className="text-[11px]" style={{ color: 'var(--c-t3)' }}>
-                    {u.totalPredictions || 0}p
-                  </span>
+                  {u.currentStreak > 0 && (
+                    <span className="text-[11px] font-bold" style={{ color: 'var(--c-orange)' }}>
+                      🔥{u.currentStreak}
+                    </span>
+                  )}
                   <span className="text-[12px] font-bold" style={{ color: 'var(--c-gold)' }}>
                     {u.totalPoints}pt
                   </span>

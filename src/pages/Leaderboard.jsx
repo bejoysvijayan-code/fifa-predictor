@@ -263,9 +263,28 @@ export default function Leaderboard() {
     ? users.filter((u) => (u.groupIds || []).includes(activeGroupId))
     : users;
 
-  const groupMembers = includePollPoints
+  const baseMembers = includePollPoints
     ? rawMembers.map((u) => ({ ...u, totalPoints: Math.round(((u.totalPoints || 0) + (u.pollPoints || 0)) * 10) / 10 }))
     : rawMembers;
+
+  const userPredMap = {};
+  allPreds.forEach((p) => {
+    if (!userPredMap[p.userId]) userPredMap[p.userId] = {};
+    userPredMap[p.userId][p.matchId] = p.prediction;
+  });
+  const completedByRecent = allMatches
+    .filter((m) => m.status === 'completed' && m.result?.winner)
+    .sort((a, b) => (b.matchNumber ?? 0) - (a.matchNumber ?? 0));
+  const groupMembers = baseMembers.map((u) => {
+    const uid = u.uid || u.id;
+    const predsByMatch = userPredMap[uid] || {};
+    let currentStreak = 0;
+    for (const m of completedByRecent) {
+      if (predsByMatch[m.id] === m.result.winner) currentStreak++;
+      else break;
+    }
+    return { ...u, currentStreak };
+  });
 
   const isGroupAdmin = (activeGroup?.adminIds || []).includes(user?.uid);
 
