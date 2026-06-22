@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import CountdownTimer from '../components/CountdownTimer';
 import {
   getUser, updateUserProfile, getUserPredictions, getMatches, getAllPredictions, getGroups, getHouses,
 } from '../firebase/services';
@@ -98,6 +99,7 @@ function Field({ label, value, onChange, type = 'text', readOnly = false, placeh
 export default function Profile() {
   const { user } = useAuth();
   const { uid: paramUid } = useParams();
+  const navigate = useNavigate();
   const isOwn = !paramUid || paramUid === user?.uid;
   const targetUid = isOwn ? user?.uid : paramUid;
 
@@ -323,6 +325,67 @@ export default function Profile() {
                 })}
               </div>
             )}
+          </div>
+        );
+      })()}
+
+      {/* ── Pending Predictions (own profile only) ── */}
+      {isOwn && (() => {
+        const userGroupSet = new Set(profile?.groupIds || []);
+        const votedMatchIds = new Set(preds.map((p) => p.matchId));
+        const now = Date.now();
+        const pending = matches
+          .filter((m) => {
+            if (m.status === 'completed') return false;
+            const kickoff = m.kickoffTime?.toDate ? m.kickoffTime.toDate() : m.kickoffTime ? new Date(m.kickoffTime) : null;
+            if (!kickoff || kickoff.getTime() <= now) return false;
+            if (votedMatchIds.has(m.id)) return false;
+            return m.groupIds?.some((gid) => userGroupSet.has(gid)) || (!m.groupIds?.length && userGroupSet.size === 0);
+          })
+          .sort((a, b) => {
+            const ka = a.kickoffTime?.toDate ? a.kickoffTime.toDate() : new Date(a.kickoffTime);
+            const kb = b.kickoffTime?.toDate ? b.kickoffTime.toDate() : new Date(b.kickoffTime);
+            return ka - kb;
+          });
+        if (!pending.length) return null;
+        return (
+          <div className="rounded-2xl p-5 space-y-3"
+            style={{ background: 'var(--c-card)', border: '1px solid var(--c-orange)' }}>
+            <div className="flex items-center justify-between">
+              <div className="text-[13px] font-semibold" style={{ color: 'var(--c-t1)' }}>
+                ⏰ Pending Predictions
+              </div>
+              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
+                style={{ background: 'rgba(251,146,60,0.12)', color: 'var(--c-orange)' }}>
+                {pending.length} match{pending.length > 1 ? 'es' : ''}
+              </span>
+            </div>
+            <div className="space-y-2">
+              {pending.map((m) => (
+                <div key={m.id} className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
+                  style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+                  {m.matchNumber != null && (
+                    <span className="flex-shrink-0 text-[11px] font-bold w-6 text-center" style={{ color: 'var(--c-gold)' }}>
+                      #{m.matchNumber}
+                    </span>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[13px] font-semibold truncate" style={{ color: 'var(--c-t1)' }}>
+                      {getFlag(m.homeTeam)} {m.homeTeam} vs {getFlag(m.awayTeam)} {m.awayTeam}
+                    </p>
+                    <p className="text-[11px] mt-0.5" style={{ color: 'var(--c-t3)' }}>
+                      <CountdownTimer kickoffTime={m.kickoffTime} compact />
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => navigate('/matches')}
+                    className="flex-shrink-0 text-[11px] font-semibold px-3 py-1.5 rounded-lg transition-all"
+                    style={{ background: 'var(--c-primary)', color: '#fff' }}>
+                    Predict
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
         );
       })()}
