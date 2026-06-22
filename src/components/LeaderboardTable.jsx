@@ -12,14 +12,14 @@ const PODIUM = [
 function TickX({ correct, wrong }) {
   return (
     <div className="flex items-center justify-center gap-2 mt-2">
-      <span className="flex items-center gap-0.5 text-[11px] font-bold" style={{ color: 'var(--c-green)' }}>
+      <span title={`${correct} correct predictions`} className="flex items-center gap-0.5 text-[11px] font-bold" style={{ color: 'var(--c-green)' }}>
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
           <circle cx="6" cy="6" r="6" fill="currentColor" opacity="0.15" />
           <path d="M3 6l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
         {correct}
       </span>
-      <span className="flex items-center gap-0.5 text-[11px] font-bold" style={{ color: 'var(--c-red)' }}>
+      <span title={`${wrong} wrong predictions`} className="flex items-center gap-0.5 text-[11px] font-bold" style={{ color: 'var(--c-red)' }}>
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
           <circle cx="6" cy="6" r="6" fill="currentColor" opacity="0.15" />
           <path d="M4 4l4 4M8 4l-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
@@ -86,7 +86,7 @@ export default function LeaderboardTable({ users }) {
 
               <TickX correct={u.correctPredictions || 0} wrong={wrong} />
               {u.currentStreak > 0 && (
-                <div className="mt-2 text-[11px] font-bold" style={{ color: 'var(--c-orange)' }}>
+                <div title={`Current streak: ${u.currentStreak} correct in a row`} className="mt-2 text-[11px] font-bold" style={{ color: 'var(--c-orange)' }}>
                   🔥 {u.currentStreak} streak
                 </div>
               )}
@@ -137,14 +137,14 @@ export default function LeaderboardTable({ users }) {
 
                 {/* Stats: ✓ wrong pts streak */}
                 <div className="flex items-center gap-3 flex-shrink-0">
-                  <span className="flex items-center gap-1 text-[12px] font-bold" style={{ color: 'var(--c-green)' }}>
+                  <span title={`${u.correctPredictions || 0} correct predictions`} className="flex items-center gap-1 text-[12px] font-bold" style={{ color: 'var(--c-green)' }}>
                     <svg width="13" height="13" viewBox="0 0 12 12" fill="none">
                       <circle cx="6" cy="6" r="6" fill="currentColor" opacity="0.15" />
                       <path d="M3 6l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                     {u.correctPredictions || 0}
                   </span>
-                  <span className="flex items-center gap-1 text-[12px] font-bold" style={{ color: 'var(--c-red)' }}>
+                  <span title={`${wrong} wrong predictions`} className="flex items-center gap-1 text-[12px] font-bold" style={{ color: 'var(--c-red)' }}>
                     <svg width="13" height="13" viewBox="0 0 12 12" fill="none">
                       <circle cx="6" cy="6" r="6" fill="currentColor" opacity="0.15" />
                       <path d="M4 4l4 4M8 4l-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
@@ -152,11 +152,11 @@ export default function LeaderboardTable({ users }) {
                     {wrong}
                   </span>
                   {u.currentStreak > 0 && (
-                    <span className="text-[11px] font-bold" style={{ color: 'var(--c-orange)' }}>
+                    <span title={`Current streak: ${u.currentStreak} correct in a row`} className="text-[11px] font-bold" style={{ color: 'var(--c-orange)' }}>
                       🔥{u.currentStreak}
                     </span>
                   )}
-                  <span className="text-[12px] font-bold" style={{ color: 'var(--c-gold)' }}>
+                  <span title={`${u.totalPoints} total points`} className="text-[12px] font-bold" style={{ color: 'var(--c-gold)' }}>
                     {u.totalPoints}pt
                   </span>
                 </div>
