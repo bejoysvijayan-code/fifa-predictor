@@ -343,6 +343,11 @@ export default function Leaderboard() {
         <>
           <LeaderboardTable users={groupMembers} />
           <GroupTrivia members={groupMembers} allPreds={allPreds} allMatches={allMatches} />
+          <Link to="/match-stats"
+            className="mt-5 flex items-center justify-center gap-2 rounded-2xl py-3 text-[13px] font-medium"
+            style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-t2)', textDecoration: 'none' }}>
+            📊 View Match-by-Match Stats
+          </Link>
         </>
       )}
 

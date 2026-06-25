@@ -340,7 +340,7 @@ export default function Profile() {
             const kickoff = m.kickoffTime?.toDate ? m.kickoffTime.toDate() : m.kickoffTime ? new Date(m.kickoffTime) : null;
             if (!kickoff || kickoff.getTime() <= now) return false;
             if (votedMatchIds.has(m.id)) return false;
-            return m.groupIds?.some((gid) => userGroupSet.has(gid)) || (!m.groupIds?.length && userGroupSet.size === 0);
+            return !m.groupIds?.length || m.groupIds.some((gid) => userGroupSet.has(gid));
           })
           .sort((a, b) => {
             const ka = a.kickoffTime?.toDate ? a.kickoffTime.toDate() : new Date(a.kickoffTime);
