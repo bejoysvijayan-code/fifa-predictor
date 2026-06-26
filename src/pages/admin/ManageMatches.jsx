@@ -18,6 +18,7 @@ export default function ManageMatches() {
   const [savingNum, setSavingNum] = useState(null);
   const [editingTime, setEditingTime] = useState(null);
   const [savingTime, setSavingTime] = useState(null);
+  const [togglingConfirm, setTogglingConfirm] = useState(null);
 
   async function load() {
     const [data, groupData] = await Promise.all([getMatches(), getGroups()]);
@@ -101,6 +102,18 @@ export default function ManageMatches() {
     }
   }
 
+  async function handleToggleConfirmed(matchId, current) {
+    setTogglingConfirm(matchId);
+    try {
+      await updateMatch(matchId, { detailsConfirmed: !current });
+      setMatches((prev) =>
+        prev.map((m) => m.id === matchId ? { ...m, detailsConfirmed: !current } : m)
+      );
+    } finally {
+      setTogglingConfirm(null);
+    }
+  }
+
   async function handleDelete(matchId) {
     setDeleting(matchId);
     try {
@@ -122,6 +135,7 @@ export default function ManageMatches() {
 
   // Count untagged completed matches
   const untagged = matches.filter((m) => m.status === 'completed' && !(m.groupIds?.length));
+  const unconfirmed = matches.filter((m) => !m.detailsConfirmed);
 
   const inputClass = "w-full rounded-lg px-3 py-2 text-sm focus:outline-none";
   const inputStyle = {
@@ -190,6 +204,14 @@ export default function ManageMatches() {
         </div>
       )}
 
+      {/* Unconfirmed warning */}
+      {unconfirmed.length > 0 && (
+        <div className="rounded-xl px-4 py-3 text-sm"
+          style={{ background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.3)', color: '#818CF8' }}>
+          🔲 {unconfirmed.length} match{unconfirmed.length > 1 ? 'es' : ''} not yet confirmed — verify match number & kickoff time, then click ✅ to mark as confirmed.
+        </div>
+      )}
+
       {/* Duplicates warning */}
       {duplicateKeys.size > 0 && (
         <div className="rounded-xl px-4 py-3 text-sm"
@@ -212,10 +234,15 @@ export default function ManageMatches() {
               const isEditingNum = editingNum?.id === m.id;
               const currentGroupId = m.groupIds?.[0] || '';
               const isUntagged = m.status === 'completed' && !currentGroupId;
+              const isConfirmed = !!m.detailsConfirmed;
 
               return (
                 <div key={m.id} className="card"
-                  style={isDuplicate ? { borderColor: 'var(--c-orange-bd)', background: 'var(--c-orange-bg)' } : {}}>
+                  style={isDuplicate
+                    ? { borderColor: 'var(--c-orange-bd)', background: 'var(--c-orange-bg)' }
+                    : !isConfirmed
+                    ? { borderColor: 'rgba(99,102,241,0.4)' }
+                    : { borderColor: 'rgba(34,197,94,0.35)' }}>
                   <div className="flex items-center justify-between gap-3 flex-wrap">
                     <div className="flex-1 min-w-0">
                       <div className="font-medium text-sm flex items-center gap-1.5 flex-wrap" style={{ color: 'var(--c-t1)' }}>
@@ -329,6 +356,19 @@ export default function ManageMatches() {
                           <option key={s} value={s}>{s}</option>
                         ))}
                       </select>
+
+                      {/* Confirm details */}
+                      <button
+                        onClick={() => handleToggleConfirmed(m.id, isConfirmed)}
+                        disabled={togglingConfirm === m.id}
+                        title={isConfirmed ? 'Details confirmed — click to unconfirm' : 'Click to confirm match number & kickoff time'}
+                        className="px-2 py-1.5 text-xs rounded-lg font-medium transition-colors disabled:opacity-50"
+                        style={isConfirmed
+                          ? { background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.35)', color: 'var(--c-green)' }
+                          : { background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.3)', color: '#818CF8' }}
+                      >
+                        {togglingConfirm === m.id ? '…' : isConfirmed ? '✅' : '🔲'}
+                      </button>
 
                       {/* Delete */}
                       {isConfirming ? (
