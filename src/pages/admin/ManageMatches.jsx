@@ -16,6 +16,8 @@ export default function ManageMatches() {
   const [deleting, setDeleting] = useState(null);
   const [editingNum, setEditingNum] = useState(null);
   const [savingNum, setSavingNum] = useState(null);
+  const [editingTime, setEditingTime] = useState(null);
+  const [savingTime, setSavingTime] = useState(null);
 
   async function load() {
     const [data, groupData] = await Promise.all([getMatches(), getGroups()]);
@@ -59,6 +61,29 @@ export default function ManageMatches() {
     const groupIds = groupId ? [groupId] : [];
     await updateMatch(matchId, { groupIds });
     setMatches((prev) => prev.map((m) => m.id === matchId ? { ...m, groupIds } : m));
+  }
+
+  function toDatetimeLocal(ts) {
+    if (!ts) return '';
+    const d = ts.toDate ? ts.toDate() : new Date(ts);
+    // Format as YYYY-MM-DDTHH:mm in local time
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  async function handleSaveTime(matchId) {
+    if (!editingTime?.value) return;
+    setSavingTime(matchId);
+    try {
+      const ts = Timestamp.fromDate(new Date(editingTime.value));
+      await updateMatch(matchId, { kickoffTime: ts });
+      setMatches((prev) =>
+        prev.map((m) => m.id === matchId ? { ...m, kickoffTime: ts } : m)
+      );
+      setEditingTime(null);
+    } finally {
+      setSavingTime(null);
+    }
   }
 
   async function handleSaveNum(matchId) {
@@ -236,7 +261,41 @@ export default function ManageMatches() {
                           <span className="text-xs font-medium" style={{ color: 'var(--c-orange)' }}>⚠️ duplicate</span>
                         )}
                       </div>
-                      <div className="text-xs mt-0.5" style={{ color: 'var(--c-t2)' }}>{formatKickoff(m.kickoffTime)}</div>
+                      {editingTime?.id === m.id ? (
+                        <div className="flex items-center gap-1 mt-1">
+                          <input
+                            type="datetime-local"
+                            value={editingTime.value}
+                            onChange={(e) => setEditingTime({ id: m.id, value: e.target.value })}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleSaveTime(m.id);
+                              if (e.key === 'Escape') setEditingTime(null);
+                            }}
+                            autoFocus
+                            className="rounded px-1.5 py-0.5 text-xs focus:outline-none"
+                            style={{ background: 'var(--c-inp)', border: '1px solid var(--c-primary)', color: 'var(--c-inp-t)' }}
+                          />
+                          <button onClick={() => handleSaveTime(m.id)} disabled={savingTime === m.id}
+                            className="text-xs px-1.5 py-0.5 bg-blue-700 text-white rounded disabled:opacity-50">
+                            {savingTime === m.id ? '…' : '✓'}
+                          </button>
+                          <button onClick={() => setEditingTime(null)}
+                            className="text-xs px-1.5 py-0.5 rounded"
+                            style={{ background: 'var(--c-surface)', color: 'var(--c-t2)' }}>
+                            ✕
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setEditingTime({ id: m.id, value: toDatetimeLocal(m.kickoffTime) })}
+                          className="text-xs mt-0.5 flex items-center gap-1 group"
+                          title="Click to edit kickoff time"
+                          style={{ color: 'var(--c-t2)' }}
+                        >
+                          {formatKickoff(m.kickoffTime)}
+                          <span className="text-xs opacity-0 group-hover:opacity-100 transition-opacity">✏️</span>
+                        </button>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-2 flex-shrink-0">
