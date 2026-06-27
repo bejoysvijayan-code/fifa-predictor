@@ -85,6 +85,13 @@ export default function LeaderboardTable({ users }) {
               </div>
 
               <TickX correct={u.correctPredictions || 0} wrong={wrong} />
+              {u.lateVotes > 0 && (
+                <div title={`${u.lateVotes} vote${u.lateVotes > 1 ? 's' : ''} submitted after kickoff — not counted`}
+                  className="mt-1 text-[10px] font-semibold"
+                  style={{ color: '#F59E0B' }}>
+                  ⏰ {u.lateVotes} late
+                </div>
+              )}
               {u.currentStreak > 0 && (
                 <div title={`Current streak: ${u.currentStreak} correct in a row`} className="mt-2 text-[11px] font-bold" style={{ color: 'var(--c-orange)' }}>
                   🔥 {u.currentStreak} streak
@@ -151,6 +158,13 @@ export default function LeaderboardTable({ users }) {
                     </svg>
                     {wrong}
                   </span>
+                  {u.lateVotes > 0 && (
+                    <span title={`${u.lateVotes} vote${u.lateVotes > 1 ? 's' : ''} submitted after kickoff — not counted`}
+                      className="text-[11px] font-semibold"
+                      style={{ color: '#F59E0B' }}>
+                      ⏰{u.lateVotes}
+                    </span>
+                  )}
                   {u.currentStreak > 0 && (
                     <span title={`Current streak: ${u.currentStreak} correct in a row`} className="text-[11px] font-bold" style={{ color: 'var(--c-orange)' }}>
                       🔥{u.currentStreak}

@@ -267,23 +267,43 @@ export default function Leaderboard() {
     ? rawMembers.map((u) => ({ ...u, totalPoints: Math.round(((u.totalPoints || 0) + (u.pollPoints || 0)) * 10) / 10 }))
     : rawMembers;
 
+  const matchMap = {};
+  allMatches.forEach((m) => { matchMap[m.id] = m; });
+
   const userPredMap = {};
+  const userPredsAll = {};
   allPreds.forEach((p) => {
     if (!userPredMap[p.userId]) userPredMap[p.userId] = {};
     userPredMap[p.userId][p.matchId] = p.prediction;
+    if (!userPredsAll[p.userId]) userPredsAll[p.userId] = [];
+    userPredsAll[p.userId].push(p);
   });
+
   const completedByRecent = allMatches
     .filter((m) => m.status === 'completed' && m.result?.winner)
     .sort((a, b) => (b.matchNumber ?? 0) - (a.matchNumber ?? 0));
+
   const groupMembers = baseMembers.map((u) => {
     const uid = u.uid || u.id;
     const predsByMatch = userPredMap[uid] || {};
+
     let currentStreak = 0;
     for (const m of completedByRecent) {
       if (normalizeTeamName(predsByMatch[m.id]) === normalizeTeamName(m.result.winner)) currentStreak++;
       else break;
     }
-    return { ...u, currentStreak };
+
+    let lateVotes = 0;
+    (userPredsAll[uid] || []).forEach((p) => {
+      const match = matchMap[p.matchId];
+      if (!match) return;
+      const raw     = p.predictionTime || p.timestamp;
+      const predMs  = raw?.toMillis ? raw.toMillis() : raw ? new Date(raw).getTime() : null;
+      const kickMs  = match.kickoffTime?.toMillis ? match.kickoffTime.toMillis() : match.kickoffTime ? new Date(match.kickoffTime).getTime() : null;
+      if (predMs !== null && kickMs !== null && predMs >= kickMs) lateVotes++;
+    });
+
+    return { ...u, currentStreak, lateVotes };
   });
 
   const isGroupAdmin = (activeGroup?.adminIds || []).includes(user?.uid);
