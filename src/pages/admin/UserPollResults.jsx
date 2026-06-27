@@ -57,7 +57,7 @@ export default function UserPollResults() {
       .filter((r) => r.isCompleted)
       .map(({ m, pred, winner, isRight }) => {
         const label = isRight ? '✅ Right' : '❌ Wrong';
-        return `${m.homeTeam} vs ${m.awayTeam} - Your Pick - ${pred?.prediction ?? '?'} - Result - ${winner} - ${label}`;
+        return `Match ${m.matchNumber ?? '?'} - ${m.homeTeam} vs ${m.awayTeam} - Your Pick - ${pred?.prediction ?? '?'} - Result - ${winner} - ${label}`;
       });
 
     if (!lines.length) return '';
