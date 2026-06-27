@@ -99,24 +99,41 @@ export default function UserPollResults() {
     setDeduping(true);
     setDedupeResult(null);
 
-    // Group predictions by matchId
-    const byMatch = {};
+    const matchMap2 = {};
+    matches.forEach((m) => { matchMap2[m.id] = m; });
+
+    // Group 1: same matchId (exact duplicate documents)
+    const byMatchId = {};
     preds.forEach((p) => {
-      if (!byMatch[p.matchId]) byMatch[p.matchId] = [];
-      byMatch[p.matchId].push(p);
+      if (!byMatchId[p.matchId]) byMatchId[p.matchId] = [];
+      byMatchId[p.matchId].push(p);
     });
 
-    // Find duplicates — keep earliest, delete the rest
-    const toDelete = [];
-    Object.values(byMatch).forEach((group) => {
+    // Group 2: same match name across different matchIds
+    // key = "homeTeam|awayTeam" (normalised)
+    const byMatchName = {};
+    preds.forEach((p) => {
+      const m = matchMap2[p.matchId];
+      if (!m) return;
+      const key = `${m.homeTeam}|${m.awayTeam}`;
+      if (!byMatchName[key]) byMatchName[key] = [];
+      byMatchName[key].push(p);
+    });
+
+    const toDelete = new Set();
+
+    // Exact matchId duplicates — keep earliest
+    Object.values(byMatchId).forEach((group) => {
       if (group.length <= 1) return;
-      // Sort by predictionTime/timestamp ascending — keep first
-      const sorted = [...group].sort((a, b) => {
-        const ta = getPredTime(a) ?? Infinity;
-        const tb = getPredTime(b) ?? Infinity;
-        return ta - tb;
-      });
-      sorted.slice(1).forEach((p) => toDelete.push(p.id));
+      const sorted = [...group].sort((a, b) => (getPredTime(a) ?? Infinity) - (getPredTime(b) ?? Infinity));
+      sorted.slice(1).forEach((p) => toDelete.add(p.id));
+    });
+
+    // Cross-matchId duplicates for same match name — keep earliest
+    Object.values(byMatchName).forEach((group) => {
+      if (group.length <= 1) return;
+      const sorted = [...group].sort((a, b) => (getPredTime(a) ?? Infinity) - (getPredTime(b) ?? Infinity));
+      sorted.slice(1).forEach((p) => toDelete.add(p.id));
     });
 
     if (toDelete.length === 0) {
@@ -217,9 +234,22 @@ export default function UserPollResults() {
 
           {/* Duplicate checker */}
           {(() => {
-            const byMatch = {};
-            preds.forEach((p) => { byMatch[p.matchId] = (byMatch[p.matchId] || 0) + 1; });
-            const dupCount = Object.values(byMatch).filter((c) => c > 1).reduce((s, c) => s + (c - 1), 0);
+            const matchMap2 = {};
+            matches.forEach((m) => { matchMap2[m.id] = m; });
+            // Count same-matchId dupes
+            const byId = {};
+            preds.forEach((p) => { byId[p.matchId] = (byId[p.matchId] || 0) + 1; });
+            const idDupes = Object.values(byId).filter((c) => c > 1).reduce((s, c) => s + (c - 1), 0);
+            // Count cross-matchId dupes (same match name)
+            const byName = {};
+            preds.forEach((p) => {
+              const m = matchMap2[p.matchId];
+              if (!m) return;
+              const key = `${m.homeTeam}|${m.awayTeam}`;
+              byName[key] = (byName[key] || 0) + 1;
+            });
+            const nameDupes = Object.values(byName).filter((c) => c > 1).reduce((s, c) => s + (c - 1), 0);
+            const dupCount = idDupes + nameDupes;
             return dupCount > 0 || dedupeResult ? (
               <div className="rounded-xl px-4 py-3 flex items-center justify-between gap-3"
                 style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)' }}>
