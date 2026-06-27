@@ -2,14 +2,26 @@ import { useEffect, useState } from 'react';
 import { getAllUsers, getUserPredictions, getMatches } from '../../firebase/services';
 import { normalizeTeamName } from '../../utils/scoring';
 
+function getPredTime(pred) {
+  const ts = pred?.predictionTime || pred?.timestamp;
+  if (!ts) return null;
+  return typeof ts.toMillis === 'function' ? ts.toMillis() : new Date(ts).getTime();
+}
+
+function getKickoffMs(m) {
+  const ts = m?.kickoffTime;
+  if (!ts) return null;
+  return typeof ts.toMillis === 'function' ? ts.toMillis() : new Date(ts).getTime();
+}
+
 export default function UserPollResults() {
-  const [users, setUsers]     = useState([]);
-  const [matches, setMatches] = useState([]);
+  const [users, setUsers]         = useState([]);
+  const [matches, setMatches]     = useState([]);
   const [selectedUid, setSelectedUid] = useState('');
-  const [preds, setPreds]     = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [preds, setPreds]         = useState([]);
+  const [loading, setLoading]     = useState(true);
   const [loadingPreds, setLoadingPreds] = useState(false);
-  const [copied, setCopied]   = useState(false);
+  const [copied, setCopied]       = useState(false);
   const [includeAll, setIncludeAll] = useState(false);
 
   useEffect(() => {
@@ -31,7 +43,6 @@ export default function UserPollResults() {
 
   const selectedUser = users.find((u) => u.uid === selectedUid);
 
-  // Build rows: one per match that user predicted
   const rows = matches
     .filter((m) => {
       const hasPred = preds.some((p) => p.matchId === m.id);
@@ -43,26 +54,41 @@ export default function UserPollResults() {
       const pred = preds.find((p) => p.matchId === m.id);
       const winner = m.result?.winner || null;
       const isCompleted = !!winner;
-      const isRight = isCompleted
+
+      // Late vote detection
+      const predMs    = getPredTime(pred);
+      const kickoffMs = getKickoffMs(m);
+      const isLate = predMs !== null && kickoffMs !== null && predMs >= kickoffMs;
+
+      const isRight = isCompleted && !isLate
         ? normalizeTeamName(pred?.prediction) === normalizeTeamName(winner)
-        : null;
-      return { m, pred, winner, isCompleted, isRight };
+        : isCompleted && isLate
+          ? normalizeTeamName(pred?.prediction) === normalizeTeamName(winner)
+          : null;
+
+      // For leaderboard-matching score: late votes don't count
+      const countsForScore = isCompleted && !isLate && isRight;
+
+      return { m, pred, winner, isCompleted, isLate, isRight, countsForScore };
     });
 
-  const correctCount = rows.filter((r) => r.isRight === true).length;
-  const completedCount = rows.filter((r) => r.isCompleted).length;
+  const correctCount   = rows.filter((r) => r.countsForScore).length;
+  const completedCount = rows.filter((r) => r.isCompleted && !r.isLate).length;
+  const lateCount      = rows.filter((r) => r.isLate).length;
 
   function buildCopyText() {
     const lines = rows
       .filter((r) => r.isCompleted)
-      .map(({ m, pred, winner, isRight }) => {
-        const label = isRight ? '✅ Right' : '❌ Wrong';
+      .map(({ m, pred, winner, isRight, isLate }) => {
+        const label = isLate
+          ? '⏰ Late (not counted)'
+          : isRight ? '✅ Right' : '❌ Wrong';
         return `Match ${m.matchNumber ?? '?'} - ${m.homeTeam} vs ${m.awayTeam} - Your Pick - ${pred?.prediction ?? '?'} - Result - ${winner} - ${label}`;
       });
 
     if (!lines.length) return '';
 
-    const summary = `\n📊 Score: ${correctCount} / ${completedCount} correct`;
+    const summary = `\n📊 Score: ${correctCount} / ${completedCount} correct${lateCount > 0 ? ` (${lateCount} late vote${lateCount > 1 ? 's' : ''} not counted)` : ''}`;
     return lines.join('\n') + summary;
   }
 
@@ -130,6 +156,12 @@ export default function UserPollResults() {
               <span style={{ color: 'var(--c-green)' }}>{correctCount} right</span>
               {' / '}
               <span style={{ color: 'var(--c-t2)' }}>{completedCount} completed</span>
+              {lateCount > 0 && (
+                <span className="ml-2 text-[12px] px-2 py-0.5 rounded-full font-medium"
+                  style={{ background: 'rgba(251,191,36,0.15)', color: '#F59E0B' }}>
+                  ⏰ {lateCount} late
+                </span>
+              )}
             </div>
             <button onClick={handleCopy}
               className="px-4 py-2 rounded-xl text-[13px] font-semibold transition-all"
@@ -141,14 +173,24 @@ export default function UserPollResults() {
             </button>
           </div>
 
+          {/* Late vote callout */}
+          {lateCount > 0 && (
+            <div className="rounded-xl px-4 py-3 text-[13px]"
+              style={{ background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.3)', color: '#F59E0B' }}>
+              ⏰ {lateCount} vote{lateCount > 1 ? 's were' : ' was'} submitted after kickoff and {lateCount > 1 ? 'are' : 'is'} not counted in the leaderboard score.
+            </div>
+          )}
+
           {/* Preview */}
           <div className="rounded-2xl overflow-hidden"
             style={{ border: '1px solid var(--c-border)' }}>
-            {rows.map(({ m, pred, winner, isCompleted, isRight }, i) => (
+            {rows.map(({ m, pred, winner, isCompleted, isLate, isRight }, i) => (
               <div key={m.id}
                 className="flex items-center gap-3 px-4 py-3 text-[13px]"
                 style={{
-                  background: i % 2 === 0 ? 'var(--c-card)' : 'var(--c-surface)',
+                  background: isLate
+                    ? 'rgba(251,191,36,0.06)'
+                    : i % 2 === 0 ? 'var(--c-card)' : 'var(--c-surface)',
                   borderBottom: i < rows.length - 1 ? '1px solid var(--c-border)' : 'none',
                 }}>
                 {/* Match number */}
@@ -178,15 +220,19 @@ export default function UserPollResults() {
                   <span className="flex-shrink-0 text-[11px]" style={{ color: 'var(--c-t3)' }}>Pending</span>
                 )}
 
-                {/* Right/Wrong */}
-                <span className="flex-shrink-0 text-[15px]">
-                  {isRight === true ? '✅' : isRight === false ? '❌' : '⏳'}
+                {/* Status */}
+                <span className="flex-shrink-0 text-[13px]">
+                  {isLate
+                    ? <span title="Late vote — not counted" style={{ color: '#F59E0B' }}>⏰</span>
+                    : isRight === true ? '✅'
+                    : isRight === false ? '❌'
+                    : '⏳'}
                 </span>
               </div>
             ))}
           </div>
 
-          {/* Copy preview text */}
+          {/* Copy preview */}
           <div>
             <div className="text-[11px] font-semibold uppercase tracking-wide mb-1.5"
               style={{ color: 'var(--c-t3)' }}>
