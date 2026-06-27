@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getAllUsers, getUserPredictions, getMatches } from '../../firebase/services';
+import { getAllUsers, getUserPredictions, getMatches, deletePrediction } from '../../firebase/services';
 import { normalizeTeamName } from '../../utils/scoring';
 
 function getPredTime(pred) {
@@ -23,6 +23,8 @@ export default function UserPollResults() {
   const [loadingPreds, setLoadingPreds] = useState(false);
   const [copied, setCopied]       = useState(false);
   const [includeAll, setIncludeAll] = useState(false);
+  const [deduping, setDeduping]   = useState(false);
+  const [dedupeResult, setDedupeResult] = useState(null);
 
   useEffect(() => {
     Promise.all([getAllUsers(), getMatches()]).then(([u, m]) => {
@@ -90,6 +92,46 @@ export default function UserPollResults() {
 
     const summary = `\n📊 Score: ${correctCount} / ${completedCount} correct${lateCount > 0 ? ` (${lateCount} late vote${lateCount > 1 ? 's' : ''} not counted)` : ''}`;
     return lines.join('\n') + summary;
+  }
+
+  async function handleDedupe() {
+    if (!selectedUid) return;
+    setDeduping(true);
+    setDedupeResult(null);
+
+    // Group predictions by matchId
+    const byMatch = {};
+    preds.forEach((p) => {
+      if (!byMatch[p.matchId]) byMatch[p.matchId] = [];
+      byMatch[p.matchId].push(p);
+    });
+
+    // Find duplicates — keep earliest, delete the rest
+    const toDelete = [];
+    Object.values(byMatch).forEach((group) => {
+      if (group.length <= 1) return;
+      // Sort by predictionTime/timestamp ascending — keep first
+      const sorted = [...group].sort((a, b) => {
+        const ta = getPredTime(a) ?? Infinity;
+        const tb = getPredTime(b) ?? Infinity;
+        return ta - tb;
+      });
+      sorted.slice(1).forEach((p) => toDelete.push(p.id));
+    });
+
+    if (toDelete.length === 0) {
+      setDedupeResult({ removed: 0 });
+      setDeduping(false);
+      return;
+    }
+
+    await Promise.all(toDelete.map((id) => deletePrediction(id)));
+
+    // Reload predictions
+    const fresh = await getUserPredictions(selectedUid);
+    setPreds(fresh);
+    setDedupeResult({ removed: toDelete.length });
+    setDeduping(false);
   }
 
   function handleCopy() {
@@ -172,6 +214,32 @@ export default function UserPollResults() {
               {copied ? '✅ Copied!' : '📋 Copy Results'}
             </button>
           </div>
+
+          {/* Duplicate checker */}
+          {(() => {
+            const byMatch = {};
+            preds.forEach((p) => { byMatch[p.matchId] = (byMatch[p.matchId] || 0) + 1; });
+            const dupCount = Object.values(byMatch).filter((c) => c > 1).reduce((s, c) => s + (c - 1), 0);
+            return dupCount > 0 || dedupeResult ? (
+              <div className="rounded-xl px-4 py-3 flex items-center justify-between gap-3"
+                style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)' }}>
+                <span className="text-[13px]" style={{ color: 'var(--c-red)' }}>
+                  {dedupeResult
+                    ? dedupeResult.removed === 0
+                      ? '✅ No duplicates found'
+                      : `✅ Removed ${dedupeResult.removed} duplicate${dedupeResult.removed > 1 ? 's' : ''}`
+                    : `⚠️ ${dupCount} duplicate prediction${dupCount > 1 ? 's' : ''} detected`}
+                </span>
+                {dupCount > 0 && (
+                  <button onClick={handleDedupe} disabled={deduping}
+                    className="px-3 py-1.5 rounded-lg text-[12px] font-semibold flex-shrink-0"
+                    style={{ background: 'var(--c-red)', color: '#fff', opacity: deduping ? 0.6 : 1 }}>
+                    {deduping ? 'Fixing…' : 'Fix Duplicates'}
+                  </button>
+                )}
+              </div>
+            ) : null;
+          })()}
 
           {/* Late vote callout */}
           {lateCount > 0 && (
