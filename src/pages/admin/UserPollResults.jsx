@@ -78,6 +78,38 @@ export default function UserPollResults() {
   const completedCount = rows.filter((r) => r.isCompleted && !r.isLate).length;
   const lateCount      = rows.filter((r) => r.isLate).length;
 
+  // Compute duplicate groups for display
+  const matchLookup = {};
+  matches.forEach((m) => { matchLookup[m.id] = m; });
+
+  const byName = {};
+  preds.forEach((p) => {
+    const m = matchLookup[p.matchId];
+    if (!m) return;
+    const key = `${m.homeTeam}|${m.awayTeam}`;
+    if (!byName[key]) byName[key] = [];
+    byName[key].push({ ...p, _match: m });
+  });
+  const byId = {};
+  preds.forEach((p) => {
+    if (!byId[p.matchId]) byId[p.matchId] = [];
+    byId[p.matchId].push({ ...p, _match: matchLookup[p.matchId] });
+  });
+
+  // Build dupGroups: array of { label, preds sorted earliest-first }
+  const dupGroups = [];
+  const seen = new Set();
+  [...Object.values(byName), ...Object.values(byId)].forEach((group) => {
+    if (group.length <= 1) return;
+    const key = group.map((p) => p.id).sort().join(',');
+    if (seen.has(key)) return;
+    seen.add(key);
+    const sorted = [...group].sort((a, b) => (getPredTime(a) ?? Infinity) - (getPredTime(b) ?? Infinity));
+    const m = sorted[0]._match;
+    dupGroups.push({ label: `${m?.homeTeam} vs ${m?.awayTeam}`, preds: sorted });
+  });
+  const toDeleteIds = new Set(dupGroups.flatMap((g) => g.preds.slice(1).map((p) => p.id)));
+
   function buildCopyText() {
     const lines = rows
       .filter((r) => r.isCompleted)
@@ -233,34 +265,20 @@ export default function UserPollResults() {
           </div>
 
           {/* Duplicate checker */}
-          {(() => {
-            const matchMap2 = {};
-            matches.forEach((m) => { matchMap2[m.id] = m; });
-            // Count same-matchId dupes
-            const byId = {};
-            preds.forEach((p) => { byId[p.matchId] = (byId[p.matchId] || 0) + 1; });
-            const idDupes = Object.values(byId).filter((c) => c > 1).reduce((s, c) => s + (c - 1), 0);
-            // Count cross-matchId dupes (same match name)
-            const byName = {};
-            preds.forEach((p) => {
-              const m = matchMap2[p.matchId];
-              if (!m) return;
-              const key = `${m.homeTeam}|${m.awayTeam}`;
-              byName[key] = (byName[key] || 0) + 1;
-            });
-            const nameDupes = Object.values(byName).filter((c) => c > 1).reduce((s, c) => s + (c - 1), 0);
-            const dupCount = idDupes + nameDupes;
-            return dupCount > 0 || dedupeResult ? (
-              <div className="rounded-xl px-4 py-3 flex items-center justify-between gap-3"
-                style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)' }}>
-                <span className="text-[13px]" style={{ color: 'var(--c-red)' }}>
+          {(dupGroups.length > 0 || dedupeResult) && (
+            <div className="rounded-xl overflow-hidden"
+              style={{ border: '1px solid rgba(239,68,68,0.35)' }}>
+              {/* Header */}
+              <div className="flex items-center justify-between gap-3 px-4 py-3"
+                style={{ background: 'rgba(239,68,68,0.08)' }}>
+                <span className="text-[13px] font-semibold" style={{ color: 'var(--c-red)' }}>
                   {dedupeResult
                     ? dedupeResult.removed === 0
                       ? '✅ No duplicates found'
                       : `✅ Removed ${dedupeResult.removed} duplicate${dedupeResult.removed > 1 ? 's' : ''}`
-                    : `⚠️ ${dupCount} duplicate prediction${dupCount > 1 ? 's' : ''} detected`}
+                    : `⚠️ ${toDeleteIds.size} duplicate${toDeleteIds.size > 1 ? 's' : ''} detected across ${dupGroups.length} match${dupGroups.length > 1 ? 'es' : ''}`}
                 </span>
-                {dupCount > 0 && (
+                {dupGroups.length > 0 && (
                   <button onClick={handleDedupe} disabled={deduping}
                     className="px-3 py-1.5 rounded-lg text-[12px] font-semibold flex-shrink-0"
                     style={{ background: 'var(--c-red)', color: '#fff', opacity: deduping ? 0.6 : 1 }}>
@@ -268,8 +286,42 @@ export default function UserPollResults() {
                   </button>
                 )}
               </div>
-            ) : null;
-          })()}
+
+              {/* Per-match duplicate breakdown */}
+              {dupGroups.map((grp, gi) => (
+                <div key={gi} style={{ borderTop: '1px solid rgba(239,68,68,0.2)' }}>
+                  <div className="px-4 py-2 text-[12px] font-semibold"
+                    style={{ background: 'rgba(239,68,68,0.04)', color: 'var(--c-t2)' }}>
+                    {grp.label} — {grp.preds.length} entries
+                  </div>
+                  {grp.preds.map((p, pi) => {
+                    const isKeep = pi === 0;
+                    const ts = getPredTime(p);
+                    const timeStr = ts ? new Date(ts).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
+                    return (
+                      <div key={p.id}
+                        className="flex items-center gap-3 px-4 py-2 text-[12px]"
+                        style={{
+                          borderTop: '1px solid var(--c-border)',
+                          background: isKeep ? 'rgba(34,197,94,0.05)' : 'rgba(239,68,68,0.05)',
+                        }}>
+                        <span className="flex-shrink-0 font-bold text-[11px]"
+                          style={{ color: isKeep ? 'var(--c-green)' : 'var(--c-red)', minWidth: 48 }}>
+                          {isKeep ? '✅ Keep' : '🗑️ Delete'}
+                        </span>
+                        <span style={{ color: 'var(--c-t2)' }}>
+                          Pick: <strong style={{ color: 'var(--c-t1)' }}>{p.prediction}</strong>
+                        </span>
+                        <span className="ml-auto flex-shrink-0" style={{ color: 'var(--c-t3)' }}>
+                          {timeStr}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Late vote callout */}
           {lateCount > 0 && (
