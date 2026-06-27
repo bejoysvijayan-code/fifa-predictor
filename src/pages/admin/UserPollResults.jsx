@@ -174,13 +174,17 @@ export default function UserPollResults() {
       return;
     }
 
-    await Promise.all([...toDelete].map((id) => deletePrediction(id)));
-
-    // Reload predictions
-    const fresh = await getUserPredictions(selectedUid);
-    setPreds(fresh);
-    setDedupeResult({ removed: toDelete.length });
-    setDeduping(false);
+    try {
+      await Promise.all([...toDelete].map((id) => deletePrediction(id)));
+      const fresh = await getUserPredictions(selectedUid);
+      setPreds(fresh);
+      setDedupeResult({ removed: toDelete.size });
+    } catch (err) {
+      console.error('Dedupe failed:', err);
+      setDedupeResult({ error: err?.message || 'Something went wrong' });
+    } finally {
+      setDeduping(false);
+    }
   }
 
   function handleCopy() {
@@ -273,9 +277,11 @@ export default function UserPollResults() {
                 style={{ background: 'rgba(239,68,68,0.08)' }}>
                 <span className="text-[13px] font-semibold" style={{ color: 'var(--c-red)' }}>
                   {dedupeResult
-                    ? dedupeResult.removed === 0
-                      ? '✅ No duplicates found'
-                      : `✅ Removed ${dedupeResult.removed} duplicate${dedupeResult.removed > 1 ? 's' : ''}`
+                    ? dedupeResult.error
+                      ? `❌ Error: ${dedupeResult.error}`
+                      : dedupeResult.removed === 0
+                        ? '✅ No duplicates found'
+                        : `✅ Removed ${dedupeResult.removed} duplicate${dedupeResult.removed > 1 ? 's' : ''}`
                     : `⚠️ ${toDeleteIds.size} duplicate${toDeleteIds.size > 1 ? 's' : ''} detected across ${dupGroups.length} match${dupGroups.length > 1 ? 'es' : ''}`}
                 </span>
                 {dupGroups.length > 0 && (
