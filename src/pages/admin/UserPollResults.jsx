@@ -136,13 +136,13 @@ export default function UserPollResults() {
       sorted.slice(1).forEach((p) => toDelete.add(p.id));
     });
 
-    if (toDelete.length === 0) {
+    if (toDelete.size === 0) {
       setDedupeResult({ removed: 0 });
       setDeduping(false);
       return;
     }
 
-    await Promise.all(toDelete.map((id) => deletePrediction(id)));
+    await Promise.all([...toDelete].map((id) => deletePrediction(id)));
 
     // Reload predictions
     const fresh = await getUserPredictions(selectedUid);
