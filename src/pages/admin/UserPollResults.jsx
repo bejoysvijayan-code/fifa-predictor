@@ -75,8 +75,10 @@ export default function UserPollResults() {
     });
 
   const correctCount   = rows.filter((r) => r.countsForScore).length;
+  const wrongCount     = rows.filter((r) => r.isCompleted && !r.isLate && r.isRight === false).length;
   const completedCount = rows.filter((r) => r.isCompleted && !r.isLate).length;
-  const lateCount      = rows.filter((r) => r.isLate).length;
+  const lateRows       = rows.filter((r) => r.isLate);
+  const lateCount      = lateRows.length;
 
   // Compute duplicate groups for display
   const matchLookup = {};
@@ -248,9 +250,11 @@ export default function UserPollResults() {
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div className="text-[14px] font-semibold" style={{ color: 'var(--c-t1)' }}>
               {selectedUser?.displayName} —&nbsp;
-              <span style={{ color: 'var(--c-green)' }}>{correctCount} right</span>
-              {' / '}
-              <span style={{ color: 'var(--c-t2)' }}>{completedCount} completed</span>
+              <span style={{ color: 'var(--c-green)' }}>✅ {correctCount}</span>
+              {' · '}
+              <span style={{ color: 'var(--c-red)' }}>❌ {wrongCount}</span>
+              {' · '}
+              <span style={{ color: 'var(--c-t3)' }}>{completedCount} done</span>
               {lateCount > 0 && (
                 <span className="ml-2 text-[12px] px-2 py-0.5 rounded-full font-medium"
                   style={{ background: 'rgba(251,191,36,0.15)', color: '#F59E0B' }}>
@@ -329,11 +333,41 @@ export default function UserPollResults() {
             </div>
           )}
 
-          {/* Late vote callout */}
+          {/* Late vote callout — per match detail */}
           {lateCount > 0 && (
-            <div className="rounded-xl px-4 py-3 text-[13px]"
-              style={{ background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.3)', color: '#F59E0B' }}>
-              ⏰ {lateCount} vote{lateCount > 1 ? 's were' : ' was'} submitted after kickoff and {lateCount > 1 ? 'are' : 'is'} not counted in the leaderboard score.
+            <div className="rounded-xl overflow-hidden"
+              style={{ border: '1px solid rgba(251,191,36,0.35)' }}>
+              <div className="px-4 py-2.5 text-[12px] font-semibold"
+                style={{ background: 'rgba(251,191,36,0.1)', color: '#F59E0B' }}>
+                ⏰ {lateCount} vote{lateCount > 1 ? 's' : ''} submitted after kickoff — not counted in leaderboard
+              </div>
+              {lateRows.map(({ m, pred, winner, isRight }) => (
+                <div key={m.id} className="flex items-center gap-3 px-4 py-3 text-[13px]"
+                  style={{ borderTop: '1px solid rgba(251,191,36,0.2)', background: 'rgba(251,191,36,0.04)' }}>
+                  <span className="flex-shrink-0 text-[11px] font-bold"
+                    style={{ color: 'var(--c-t3)', minWidth: 28 }}>
+                    M{m.matchNumber}
+                  </span>
+                  <span className="flex-1 min-w-0 font-medium truncate" style={{ color: 'var(--c-t1)' }}>
+                    {m.homeTeam} vs {m.awayTeam}
+                  </span>
+                  <span className="text-[12px]" style={{ color: 'var(--c-t2)' }}>
+                    Picked: <strong style={{ color: '#F59E0B' }}>{pred?.prediction}</strong>
+                  </span>
+                  {winner && (
+                    <span className="text-[12px]" style={{ color: 'var(--c-t3)' }}>
+                      → {winner}
+                    </span>
+                  )}
+                  <span className="flex-shrink-0 text-[12px] font-semibold px-2 py-0.5 rounded-full"
+                    style={{
+                      background: isRight ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)',
+                      color: isRight ? 'var(--c-green)' : 'var(--c-red)',
+                    }}>
+                    {isRight ? '✅ Would be right' : '❌ Would be wrong'}
+                  </span>
+                </div>
+              ))}
             </div>
           )}
 
