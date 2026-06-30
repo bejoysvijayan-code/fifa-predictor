@@ -9,7 +9,7 @@ export default function ManageMatches() {
   const [matches, setMatches] = useState([]);
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({ matchNumber: '', homeTeam: '', awayTeam: '', kickoffTime: '' });
+  const [form, setForm] = useState({ matchNumber: '', homeTeam: '', awayTeam: '', kickoffTime: '', isKnockout: false });
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(null);
@@ -30,7 +30,8 @@ export default function ManageMatches() {
   useEffect(() => { load(); }, []);
 
   function handleChange(e) {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    const { name, type, value, checked } = e.target;
+    setForm((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
   }
 
   async function handleCreate(e) {
@@ -43,14 +44,20 @@ export default function ManageMatches() {
         homeTeam: form.homeTeam.trim(),
         awayTeam: form.awayTeam.trim(),
         kickoffTime: Timestamp.fromDate(new Date(form.kickoffTime)),
+        isKnockout: form.isKnockout,
       });
-      setForm({ matchNumber: '', homeTeam: '', awayTeam: '', kickoffTime: '' });
+      setForm({ matchNumber: '', homeTeam: '', awayTeam: '', kickoffTime: '', isKnockout: false });
       setMsg('Match created!');
       await load();
     } finally {
       setSaving(false);
       setTimeout(() => setMsg(''), 3000);
     }
+  }
+
+  async function handleToggleKnockout(matchId, current) {
+    await updateMatch(matchId, { isKnockout: !current });
+    setMatches((prev) => prev.map((m) => m.id === matchId ? { ...m, isKnockout: !current } : m));
   }
 
   async function handleStatusChange(matchId, status) {
@@ -187,6 +194,10 @@ export default function ManageMatches() {
               onBlur={(e) => (e.target.style.borderColor = 'var(--c-inp-bd)')}
             />
           </div>
+          <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--c-t2)' }}>
+            <input type="checkbox" name="isKnockout" checked={form.isKnockout} onChange={handleChange} />
+            🏆 Knockout League match
+          </label>
           <button type="submit" disabled={saving}
             className="w-full py-2 bg-fifa-blue font-semibold rounded-lg transition-colors disabled:opacity-50 text-white text-sm"
           >
@@ -284,6 +295,12 @@ export default function ManageMatches() {
                           </button>
                         )}
                         {getFlag(m.homeTeam)} {m.homeTeam} vs {getFlag(m.awayTeam)} {m.awayTeam}
+                        {m.isKnockout && (
+                          <span className="text-xs font-medium px-1.5 py-0.5 rounded-full"
+                            style={{ background: 'var(--c-gold-bg)', color: 'var(--c-gold)', border: '1px solid var(--c-gold-bd)' }}>
+                            🏆 Knockout
+                          </span>
+                        )}
                         {isDuplicate && (
                           <span className="text-xs font-medium" style={{ color: 'var(--c-orange)' }}>⚠️ duplicate</span>
                         )}
@@ -356,6 +373,18 @@ export default function ManageMatches() {
                           <option key={s} value={s}>{s}</option>
                         ))}
                       </select>
+
+                      {/* Knockout League toggle */}
+                      <button
+                        onClick={() => handleToggleKnockout(m.id, !!m.isKnockout)}
+                        title={m.isKnockout ? 'Knockout League match — click to unmark' : 'Mark as Knockout League match'}
+                        className="px-2 py-1.5 text-xs rounded-lg font-medium transition-colors"
+                        style={m.isKnockout
+                          ? { background: 'var(--c-gold-bg)', border: '1px solid var(--c-gold-bd)', color: 'var(--c-gold)' }
+                          : { background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-t3)' }}
+                      >
+                        🏆
+                      </button>
 
                       {/* Confirm details */}
                       <button

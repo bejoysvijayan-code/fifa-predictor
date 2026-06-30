@@ -9,7 +9,7 @@ import {
 } from '../../firebase/services';
 import { getFlag, formatKickoff } from '../../utils/scoring';
 
-const EMPTY_FORM = { matchNumber: '', homeTeam: '', awayTeam: '', kickoffTime: '', winner: '' };
+const EMPTY_FORM = { matchNumber: '', homeTeam: '', awayTeam: '', kickoffTime: '', winner: '', isKnockout: false };
 
 function toDatetimeLocal(firestoreTs) {
   if (!firestoreTs) return '';
@@ -50,13 +50,21 @@ export default function ImportMatch() {
       awayTeam: match.awayTeam,
       kickoffTime: toDatetimeLocal(match.kickoffTime),
       winner: match.result?.winner ?? '',
+      isKnockout: !!match.isKnockout,
     });
     setLocked(true);
   }
 
   function handleFormChange(e) {
-    if (locked && ['matchNumber', 'homeTeam', 'awayTeam', 'kickoffTime'].includes(e.target.name)) return;
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    const { name, type, value, checked } = e.target;
+    if (locked && ['matchNumber', 'homeTeam', 'awayTeam', 'kickoffTime'].includes(name)) return;
+    setForm((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+  }
+
+  function isLate(p) {
+    const kickoff = form.kickoffTime ? new Date(form.kickoffTime) : null;
+    const predTime = p.predictionTime ? new Date(p.predictionTime) : null;
+    return !!(kickoff && predTime && predTime > kickoff);
   }
 
   function addParticipant() {
@@ -65,10 +73,7 @@ export default function ImportMatch() {
     if (participants.find((p) => p.name.toLowerCase() === name.toLowerCase())) {
       flash({ text: `${name} already added.`, error: true }); return;
     }
-    const kickoff = form.kickoffTime ? new Date(form.kickoffTime) : null;
-    const predTime = new Date(newPredTime);
-    const lateEntry = kickoff && predTime >= kickoff;
-    setParticipants((prev) => [...prev, { name, prediction: newPrediction, predictionTime: newPredTime, lateEntry }]);
+    setParticipants((prev) => [...prev, { name, prediction: newPrediction, predictionTime: newPredTime }]);
     setNewName(''); setNewPrediction(''); setNewPredTime('');
   }
 
@@ -78,15 +83,7 @@ export default function ImportMatch() {
 
   function updateParticipant(idx, field, value) {
     setParticipants((prev) =>
-      prev.map((p, i) => {
-        if (i !== idx) return p;
-        const updated = { ...p, [field]: value };
-        if (field === 'predictionTime') {
-          const kickoff = form.kickoffTime ? new Date(form.kickoffTime) : null;
-          updated.lateEntry = !!(kickoff && value && new Date(value) >= kickoff);
-        }
-        return updated;
-      })
+      prev.map((p, i) => (i !== idx ? p : { ...p, [field]: value }))
     );
   }
 
@@ -107,7 +104,7 @@ export default function ImportMatch() {
         ? groups.map((g) => g.id)
         : (selectedGroupId || null);
       if (selectedMatchId) {
-        await addPredictionsToExistingMatch(selectedMatchId, kickoffTs, form.winner, participantPayload, groupId);
+        await addPredictionsToExistingMatch(selectedMatchId, kickoffTs, form.winner, participantPayload, groupId, form.isKnockout);
       } else {
         await importHistoricalMatch({
           matchNumber: form.matchNumber ? Number(form.matchNumber) : null,
@@ -117,10 +114,11 @@ export default function ImportMatch() {
           winner: form.winner,
           participants: participantPayload,
           groupId,
+          isKnockout: form.isKnockout,
         });
       }
       await recalculateLeaderboard();
-      const late = participants.filter((p) => p.lateEntry).length;
+      const late = participants.filter((p) => isLate(p)).length;
       const counted = participants.length - late;
       flash({ text: `✅ ${selectedMatchId ? 'Updated' : 'Imported'}! ${counted} prediction${counted !== 1 ? 's' : ''} saved${late > 0 ? `, ${late} skipped (after kickoff)` : ''}.` });
       setSelectedMatchId(''); setForm(EMPTY_FORM); setLocked(false); setParticipants([]);
@@ -182,9 +180,7 @@ export default function ImportMatch() {
         invalid++; return;
       }
       const predictionTime = parseDateTime(rawTime);
-      const kickoff = form.kickoffTime ? new Date(form.kickoffTime) : null;
-      const lateEntry = !!(kickoff && predictionTime && new Date(predictionTime) >= kickoff);
-      newList.push({ name: rawName, prediction: rawPred, predictionTime, lateEntry });
+      newList.push({ name: rawName, prediction: rawPred, predictionTime });
       added++;
     });
 
@@ -208,7 +204,7 @@ export default function ImportMatch() {
   const predictionOptions = form.homeTeam && form.awayTeam
     ? [form.homeTeam.trim(), 'Draw', form.awayTeam.trim()]
     : [];
-  const lateCount = participants.filter((p) => p.lateEntry).length;
+  const lateCount = participants.filter((p) => isLate(p)).length;
 
   const inpStyle = {
     background: 'var(--c-inp)', border: '1px solid var(--c-inp-bd)',
@@ -316,6 +312,12 @@ export default function ImportMatch() {
             />
           </div>
 
+          {/* Knockout League flag */}
+          <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--c-t2)' }}>
+            <input type="checkbox" name="isKnockout" checked={form.isKnockout} onChange={handleFormChange} />
+            🏆 Knockout League match (Round of 32 onward)
+          </label>
+
           {/* Result */}
           <div>
             <label className="text-xs block mb-1" style={{ color: 'var(--c-t2)' }}>Result (Winner)</label>
@@ -404,7 +406,7 @@ export default function ImportMatch() {
                   <input type="datetime-local" value={newPredTime} onChange={(e) => setNewPredTime(e.target.value)}
                     style={inpStyle}
                   />
-                  {newPredTime && form.kickoffTime && new Date(newPredTime) >= new Date(form.kickoffTime) && (
+                  {newPredTime && form.kickoffTime && new Date(newPredTime) > new Date(form.kickoffTime) && (
                     <p className="text-xs mt-1" style={{ color: 'var(--c-orange)' }}>⚠️ After kickoff — won't be counted</p>
                   )}
                 </div>
@@ -422,11 +424,13 @@ export default function ImportMatch() {
               <p className="text-xs text-center py-3" style={{ color: 'var(--c-t3)' }}>No participants added yet</p>
             ) : (
               <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-                {participants.map((p, idx) => (
+                {participants.map((p, idx) => {
+                  const late = isLate(p);
+                  return (
                   <div key={idx} className="rounded-lg px-3 py-2"
                     style={{
-                      background: p.lateEntry ? 'var(--c-orange-bg)' : 'var(--c-surface)',
-                      border: `1px solid ${p.lateEntry ? 'var(--c-orange-bd)' : 'var(--c-border)'}`,
+                      background: late ? 'var(--c-orange-bg)' : 'var(--c-surface)',
+                      border: `1px solid ${late ? 'var(--c-orange-bd)' : 'var(--c-border)'}`,
                     }}
                   >
                     <div className="flex items-center gap-2 mb-1.5">
@@ -438,7 +442,7 @@ export default function ImportMatch() {
                         onChange={(e) => updateParticipant(idx, 'name', e.target.value)}
                         style={{ ...inpStyle, flex: 1, padding: '3px 8px', fontSize: 13, fontWeight: 500 }}
                       />
-                      {p.lateEntry && <span className="text-xs flex-shrink-0" style={{ color: 'var(--c-orange)' }}>⚠️ Late</span>}
+                      {late && <span className="text-xs flex-shrink-0" style={{ color: 'var(--c-orange)' }}>⚠️ Late</span>}
                       <button type="button" onClick={() => removeParticipant(idx)}
                         className="text-xl leading-none flex-shrink-0" style={{ color: 'var(--c-t3)' }}>×</button>
                     </div>
@@ -456,7 +460,8 @@ export default function ImportMatch() {
                       />
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

@@ -300,7 +300,7 @@ export default function Leaderboard() {
       const raw     = p.predictionTime || p.timestamp;
       const predMs  = raw?.toMillis ? raw.toMillis() : raw ? new Date(raw).getTime() : null;
       const kickMs  = match.kickoffTime?.toMillis ? match.kickoffTime.toMillis() : match.kickoffTime ? new Date(match.kickoffTime).getTime() : null;
-      if (predMs !== null && kickMs !== null && predMs >= kickMs) lateVotes++;
+      if (predMs !== null && kickMs !== null && predMs > kickMs) lateVotes++;
     });
 
     return { ...u, currentStreak, lateVotes };
@@ -367,6 +367,11 @@ export default function Leaderboard() {
             className="mt-5 flex items-center justify-center gap-2 rounded-2xl py-3 text-[13px] font-medium"
             style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)', color: 'var(--c-t2)', textDecoration: 'none' }}>
             📊 View Match-by-Match Stats
+          </Link>
+          <Link to="/knockout-leaderboard"
+            className="mt-2 flex items-center justify-center gap-2 rounded-2xl py-3 text-[13px] font-medium"
+            style={{ background: 'var(--c-gold-bg)', border: '1px solid var(--c-gold-bd)', color: 'var(--c-gold)', textDecoration: 'none' }}>
+            🏆 Knockout League Leaderboard
           </Link>
         </>
       )}

@@ -68,6 +68,7 @@ const TABS = [
 const DESKTOP_EXTRA = [
   { to: '/my-predictions', label: 'My Picks' },
   { to: '/match-stats',    label: 'Match Stats' },
+  { to: '/knockout-leaderboard', label: '🏆 Knockout League' },
   { to: '/discover', label: 'Discover' },
   { to: '/activity', label: 'Activity' },
 ];

@@ -60,7 +60,7 @@ export default function UserPollResults() {
       // Late vote detection
       const predMs    = getPredTime(pred);
       const kickoffMs = getKickoffMs(m);
-      const isLate = predMs !== null && kickoffMs !== null && predMs >= kickoffMs;
+      const isLate = predMs !== null && kickoffMs !== null && predMs > kickoffMs;
 
       const isRight = isCompleted && !isLate
         ? normalizeTeamName(pred?.prediction) === normalizeTeamName(winner)

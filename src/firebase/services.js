@@ -99,7 +99,7 @@ export async function deleteMatch(matchId) {
 }
 
 // Add participant predictions to an existing match + set its result
-export async function addPredictionsToExistingMatch(matchId, kickoffTime, winner, participants, groupId = null) {
+export async function addPredictionsToExistingMatch(matchId, kickoffTime, winner, participants, groupId = null, isKnockout = false) {
   const gIds = Array.isArray(groupId) ? groupId : (groupId ? [groupId] : []);
   const batch = writeBatch(db);
 
@@ -107,6 +107,7 @@ export async function addPredictionsToExistingMatch(matchId, kickoffTime, winner
   batch.update(doc(db, 'matches', matchId), {
     result: { winner },
     status: 'completed',
+    isKnockout,
     ...(gIds.length ? { groupIds: arrayUnion(...gIds) } : {}),
   });
 
@@ -216,7 +217,7 @@ export async function findUserByName(displayName) {
 
 // ── Import Historical Match ────────────────────────────
 
-export async function importHistoricalMatch({ matchNumber, homeTeam, awayTeam, kickoffTime, winner, participants, groupId = null }) {
+export async function importHistoricalMatch({ matchNumber, homeTeam, awayTeam, kickoffTime, winner, participants, groupId = null, isKnockout = false }) {
   const gIds = Array.isArray(groupId) ? groupId : (groupId ? [groupId] : []);
   const batch = writeBatch(db);
 
@@ -230,6 +231,7 @@ export async function importHistoricalMatch({ matchNumber, homeTeam, awayTeam, k
     status: 'completed',
     result: { winner },
     groupIds: gIds,
+    isKnockout,
     createdAt: serverTimestamp(),
   });
 
@@ -365,7 +367,7 @@ export async function recalculateLeaderboard() {
     if (p.predictionTime) {
       const predTime = p.predictionTime.toDate ? p.predictionTime.toDate() : new Date(p.predictionTime);
       const kickoff = kickoffMap[p.matchId];
-      if (kickoff && predTime >= kickoff) return;
+      if (kickoff && predTime > kickoff) return;
     }
 
     const uid = p.userId;
@@ -662,4 +664,15 @@ export async function getLeaderboardSettings() {
 
 export async function setLeaderboardSettings(data) {
   await setDoc(doc(db, 'settings', 'leaderboard'), data, { merge: true });
+}
+
+// ── Bracket ────────────────────────────────────────────
+
+export async function getBracketTemplate() {
+  const snap = await getDoc(doc(db, 'settings', 'bracketTemplate'));
+  return snap.exists() ? snap.data() : null;
+}
+
+export async function setBracketTemplate(data) {
+  await setDoc(doc(db, 'settings', 'bracketTemplate'), data);
 }

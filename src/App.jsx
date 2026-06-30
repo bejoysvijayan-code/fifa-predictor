@@ -53,6 +53,7 @@ import Dashboard from './pages/Dashboard';
 import Matches from './pages/Matches';
 import MyPredictions from './pages/MyPredictions';
 import Leaderboard from './pages/Leaderboard';
+import KnockoutLeaderboard from './pages/KnockoutLeaderboard';
 import Profile from './pages/Profile';
 import GroupAdmin from './pages/GroupAdmin';
 import GroupSelect from './pages/GroupSelect';
@@ -122,6 +123,7 @@ export default function App() {
               <Route path="/matches"              element={<ProtectedRoute><Layout><Matches /></Layout></ProtectedRoute>} />
               <Route path="/my-predictions"       element={<ProtectedRoute><Layout><MyPredictions /></Layout></ProtectedRoute>} />
               <Route path="/leaderboard"          element={<ProtectedRoute><Layout><Leaderboard /></Layout></ProtectedRoute>} />
+              <Route path="/knockout-leaderboard" element={<ProtectedRoute><Layout><KnockoutLeaderboard /></Layout></ProtectedRoute>} />
               <Route path="/profile"              element={<ProtectedRoute><Layout><Profile /></Layout></ProtectedRoute>} />
               <Route path="/profile/:uid"         element={<ProtectedRoute><Layout><Profile /></Layout></ProtectedRoute>} />
               <Route path="/polls"                element={<ProtectedRoute><Layout><Polls /></Layout></ProtectedRoute>} />
