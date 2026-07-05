@@ -121,7 +121,7 @@ export default function AwardStats() {
       predsByMatch[p.matchId].push(p);
     });
 
-    const allUids = Object.keys(predsByUser).filter((uid) => userMap[uid]);
+    const allUids = Object.keys(predsByUser).filter((uid) => userMap[uid] && !userMap[uid].hideFromLeaderboard);
 
     // Matches recalculate: only predictionTime is used for late check (no fallback)
     function isLate(p) {
