@@ -29,13 +29,14 @@ function AwardSection({ emoji, title, description, children }) {
 
 const MEDALS = ['🥇', '🥈', '🥉'];
 
-function RankList({ rows }) {
+function RankList({ rows, showAll }) {
   if (!rows.length) {
     return <p className="text-[13px] py-2" style={{ color: 'var(--c-t2)' }}>No data yet.</p>;
   }
+  const visible = showAll ? rows : rows.slice(0, 3);
   return (
     <div>
-      {rows.map((row, i) => (
+      {visible.map((row, i) => (
         <div
           key={row.uid || i}
           className="flex items-center justify-between py-[7px]"
@@ -82,6 +83,7 @@ export default function AwardStats() {
   const [preds, setPreds] = useState([]);
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showAll, setShowAll] = useState(false);
 
   useEffect(() => {
     Promise.all([getAllUsers(), getAllPredictions(), getMatches()]).then(([u, p, m]) => {
@@ -326,48 +328,57 @@ export default function AwardStats() {
 
   return (
     <div className="max-w-2xl mx-auto px-2 py-4 animate-fade-in">
-      <div className="flex items-center gap-3 mb-6">
-        <span className="text-2xl">🏅</span>
-        <div>
-          <h1 className="text-[20px] font-bold" style={{ color: 'var(--c-t1)' }}>Awards & Stats</h1>
-          <p className="text-[12px]" style={{ color: 'var(--c-t2)' }}>Live · updates as matches are imported</p>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <span className="text-2xl">🏅</span>
+          <div>
+            <h1 className="text-[20px] font-bold" style={{ color: 'var(--c-t1)' }}>Awards & Stats</h1>
+            <p className="text-[12px]" style={{ color: 'var(--c-t2)' }}>Live · updates as matches are imported</p>
+          </div>
         </div>
+        <button
+          onClick={() => setShowAll((v) => !v)}
+          className="flex-shrink-0 px-4 py-2 rounded-xl text-[13px] font-medium transition-colors"
+          style={{ background: showAll ? 'var(--c-gold)' : 'var(--c-surface)', color: showAll ? '#0F172A' : 'var(--c-t2)', border: '1px solid var(--c-border)' }}
+        >
+          {showAll ? 'Top 3' : 'Show All'}
+        </button>
       </div>
 
       <AwardSection emoji="🏆" title="Main Leaderboard" description="3 pts per correct on-time prediction · all matches">
-        <RankList rows={mainLB} />
+        <RankList showAll={showAll} rows={mainLB} />
       </AwardSection>
 
       <AwardSection emoji="⚡" title="Knockout League" description="4 pts per correct on-time pick · Round of 32 onwards only">
-        <RankList rows={knockoutLB} />
+        <RankList showAll={showAll} rows={knockoutLB} />
       </AwardSection>
 
       <AwardSection emoji="📊" title="Most Active" description="Total predictions made across all matches">
-        <RankList rows={mostActive} />
+        <RankList showAll={showAll} rows={mostActive} />
       </AwardSection>
 
       <AwardSection emoji="🎯" title="Top Accurate" description="Highest correct % · minimum 20 on-time predictions in completed matches">
-        <RankList rows={topAccurate} />
+        <RankList showAll={showAll} rows={topAccurate} />
       </AwardSection>
 
       <AwardSection emoji="⏰" title="Early Bird" description="Voted earliest on average before kickoff · minimum 5 predictions with timestamps">
-        <RankList rows={earlyBird} />
+        <RankList showAll={showAll} rows={earlyBird} />
       </AwardSection>
 
       <AwardSection emoji="🦸" title="Contrarian" description="Picked against the majority and was right most often (rate %) · min 3 minority picks">
-        <RankList rows={contrarian} />
+        <RankList showAll={showAll} rows={contrarian} />
       </AwardSection>
 
       <AwardSection emoji="💥" title="Upset Specialist" description="Most correct picks when voting against the majority (raw count)">
-        <RankList rows={upsetSpecialist} />
+        <RankList showAll={showAll} rows={upsetSpecialist} />
       </AwardSection>
 
       <AwardSection emoji="🔥" title="Top Streak" description="Longest consecutive correct predictions · missed matches don't break the streak">
-        <RankList rows={topStreak} />
+        <RankList showAll={showAll} rows={topStreak} />
       </AwardSection>
 
       <AwardSection emoji="⚽" title="Group Stage MVP" description="Best score across group stage matches only · 3 pts per correct pick">
-        <RankList rows={groupStageMVP} />
+        <RankList showAll={showAll} rows={groupStageMVP} />
       </AwardSection>
 
       <AwardSection emoji="✨" title={`Perfect Round — Round of 32 (${r32Count}/16)`} description="Got every single Round of 32 prediction correct">
@@ -379,7 +390,7 @@ export default function AwardStats() {
       </AwardSection>
 
       <AwardSection emoji="🪣" title="Wooden Spoon" description="Most wrong on-time predictions in completed matches">
-        <RankList rows={woodenSpoon} />
+        <RankList showAll={showAll} rows={woodenSpoon} />
       </AwardSection>
     </div>
   );
