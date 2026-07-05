@@ -110,8 +110,8 @@ function LuckyDraw({ rows }) {
       {medals.map((mp) => {
         const pool = getPool(mp);
         if (!pool.length) return null;
-        if (pool.length === 1 && !drawn[mp]) return null;
-        const winnerUid = drawn[mp];
+        const autoWinner = pool.length === 1 ? pool[0] : null;
+        const winnerUid = drawn[mp] || autoWinner?.uid;
         const winner = rows.find((r) => r.uid === winnerUid);
         return (
           <div key={mp} className="flex items-center justify-between py-[7px]" style={{ borderBottom: '1px solid var(--c-border)' }}>
@@ -120,8 +120,9 @@ function LuckyDraw({ rows }) {
               <span className="text-[13px] font-medium" style={{ color: winner ? 'var(--c-gold)' : 'var(--c-t2)' }}>
                 {winner ? winner.name : `${pool.length} tied`}
               </span>
+              {autoWinner && <span className="text-[11px]" style={{ color: 'var(--c-t2)' }}>(auto)</span>}
             </div>
-            {!winnerUid ? (
+            {!winner ? (
               <button
                 onClick={() => doDraw(mp)}
                 disabled={!!spinning}
@@ -130,7 +131,7 @@ function LuckyDraw({ rows }) {
               >
                 {spinning === mp ? '🎲 Drawing…' : '🎲 Draw'}
               </button>
-            ) : (
+            ) : drawn[mp] ? (
               <button
                 onClick={() => setDrawn((d) => { const n = { ...d }; delete n[mp]; return n; })}
                 className="px-3 py-1 rounded-lg text-[12px]"
@@ -138,7 +139,7 @@ function LuckyDraw({ rows }) {
               >
                 Redraw
               </button>
-            )}
+            ) : null}
           </div>
         );
       })}
