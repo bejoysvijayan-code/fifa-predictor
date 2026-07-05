@@ -120,6 +120,7 @@ function LuckyDraw({ rows }) {
               <span className="text-[13px] font-medium" style={{ color: winner ? 'var(--c-gold)' : 'var(--c-t2)' }}>
                 {winner ? winner.name : `${pool.length} tied`}
               </span>
+              {drawn[mp] && <span className="text-[11px]" style={{ color: 'var(--c-t2)' }}>(drawn)</span>}
               {autoWinner && <span className="text-[11px]" style={{ color: 'var(--c-t2)' }}>(auto)</span>}
             </div>
             {!winner ? (
