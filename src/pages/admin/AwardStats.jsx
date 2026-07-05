@@ -60,6 +60,92 @@ function RankList({ rows, showAll }) {
   );
 }
 
+function LuckyDraw({ rows }) {
+  const [drawn, setDrawn] = useState({});
+  const [spinning, setSpinning] = useState(null);
+
+  // Group consecutive rows with the same score into buckets
+  const groups = [];
+  rows.forEach((row) => {
+    const last = groups[groups.length - 1];
+    if (last && last[0].primary === row.primary) last.push(row);
+    else groups.push([row]);
+  });
+
+  // Return pool of eligible candidates for a given medal position
+  function getPool(mp) {
+    let pos = 1;
+    for (const group of groups) {
+      const end = pos + group.length - 1;
+      if (mp >= pos && mp <= end) {
+        const alreadyDrawn = new Set(
+          Object.entries(drawn).filter(([p]) => parseInt(p) < mp).map(([, uid]) => uid)
+        );
+        return group.filter((r) => !alreadyDrawn.has(r.uid));
+      }
+      pos = end + 1;
+      if (pos > 3) break;
+    }
+    return [];
+  }
+
+  const medals = [1, 2, 3];
+  const hasTies = medals.some((mp) => getPool(mp).length > 1);
+  if (!hasTies && Object.keys(drawn).length === 0) return null;
+
+  async function doDraw(mp) {
+    setSpinning(mp);
+    await new Promise((r) => setTimeout(r, 700));
+    const pool = getPool(mp);
+    const winner = pool[Math.floor(Math.random() * pool.length)];
+    setDrawn((d) => ({ ...d, [mp]: winner.uid }));
+    setSpinning(null);
+  }
+
+  return (
+    <div className="mt-4 pt-3" style={{ borderTop: '1px solid var(--c-border)' }}>
+      <p className="text-[11px] font-semibold uppercase tracking-wide mb-3" style={{ color: 'var(--c-t2)' }}>
+        🎲 Lucky Draw — tied positions
+      </p>
+      {medals.map((mp) => {
+        const pool = getPool(mp);
+        if (!pool.length) return null;
+        if (pool.length === 1 && !drawn[mp]) return null;
+        const winnerUid = drawn[mp];
+        const winner = rows.find((r) => r.uid === winnerUid);
+        return (
+          <div key={mp} className="flex items-center justify-between py-[7px]" style={{ borderBottom: '1px solid var(--c-border)' }}>
+            <div className="flex items-center gap-2">
+              <span className="text-[14px]">{MEDALS[mp - 1]}</span>
+              <span className="text-[13px] font-medium" style={{ color: winner ? 'var(--c-gold)' : 'var(--c-t2)' }}>
+                {winner ? winner.name : `${pool.length} tied`}
+              </span>
+            </div>
+            {!winnerUid ? (
+              <button
+                onClick={() => doDraw(mp)}
+                disabled={!!spinning}
+                className="px-3 py-1 rounded-lg text-[12px] font-medium"
+                style={{ background: 'var(--c-gold)', color: '#0F172A', opacity: spinning ? 0.6 : 1 }}
+              >
+                {spinning === mp ? '🎲 Drawing…' : '🎲 Draw'}
+              </button>
+            ) : (
+              <button
+                onClick={() => setDrawn((d) => { const n = { ...d }; delete n[mp]; return n; })}
+                className="px-3 py-1 rounded-lg text-[12px]"
+                style={{ background: 'var(--c-surface)', color: 'var(--c-t2)', border: '1px solid var(--c-border)' }}
+              >
+                Redraw
+              </button>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function PerfectRoundList({ achievers, totalMatches, roundLabel }) {
   if (totalMatches === 0) {
     return <p className="text-[13px] py-2" style={{ color: 'var(--c-t2)' }}>{roundLabel} not yet completed.</p>;
@@ -347,38 +433,47 @@ export default function AwardStats() {
 
       <AwardSection emoji="🏆" title="Main Leaderboard" description="3 pts per correct on-time prediction · all matches">
         <RankList showAll={showAll} rows={mainLB} />
+        <LuckyDraw rows={mainLB} />
       </AwardSection>
 
       <AwardSection emoji="⚡" title="Knockout League" description="4 pts per correct on-time pick · Round of 32 onwards only">
         <RankList showAll={showAll} rows={knockoutLB} />
+        <LuckyDraw rows={knockoutLB} />
       </AwardSection>
 
       <AwardSection emoji="📊" title="Most Active" description="Total predictions made across all matches">
         <RankList showAll={showAll} rows={mostActive} />
+        <LuckyDraw rows={mostActive} />
       </AwardSection>
 
       <AwardSection emoji="🎯" title="Top Accurate" description="Highest correct % · minimum 20 on-time predictions in completed matches">
         <RankList showAll={showAll} rows={topAccurate} />
+        <LuckyDraw rows={topAccurate} />
       </AwardSection>
 
       <AwardSection emoji="⏰" title="Early Bird" description="Voted earliest on average before kickoff · minimum 5 predictions with timestamps">
         <RankList showAll={showAll} rows={earlyBird} />
+        <LuckyDraw rows={earlyBird} />
       </AwardSection>
 
       <AwardSection emoji="🦸" title="Contrarian" description="Picked against the majority and was right most often (rate %) · min 3 minority picks">
         <RankList showAll={showAll} rows={contrarian} />
+        <LuckyDraw rows={contrarian} />
       </AwardSection>
 
       <AwardSection emoji="💥" title="Upset Specialist" description="Most correct picks when voting against the majority (raw count)">
         <RankList showAll={showAll} rows={upsetSpecialist} />
+        <LuckyDraw rows={upsetSpecialist} />
       </AwardSection>
 
       <AwardSection emoji="🔥" title="Top Streak" description="Longest consecutive correct predictions · missed matches don't break the streak">
         <RankList showAll={showAll} rows={topStreak} />
+        <LuckyDraw rows={topStreak} />
       </AwardSection>
 
       <AwardSection emoji="⚽" title="Group Stage MVP" description="Best score across group stage matches only · 3 pts per correct pick">
         <RankList showAll={showAll} rows={groupStageMVP} />
+        <LuckyDraw rows={groupStageMVP} />
       </AwardSection>
 
       <AwardSection emoji="✨" title={`Perfect Round — Round of 32 (${r32Count}/16)`} description="Got every single Round of 32 prediction correct">
@@ -391,6 +486,7 @@ export default function AwardStats() {
 
       <AwardSection emoji="🪣" title="Wooden Spoon" description="Most wrong on-time predictions in completed matches">
         <RankList showAll={showAll} rows={woodenSpoon} />
+        <LuckyDraw rows={woodenSpoon} />
       </AwardSection>
     </div>
   );
