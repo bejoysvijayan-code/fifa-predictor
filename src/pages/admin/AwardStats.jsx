@@ -486,7 +486,7 @@ export default function AwardStats() {
         <PerfectRoundList achievers={perfectR16} totalMatches={r16Count} roundLabel="Round of 16" />
       </AwardSection>
 
-      <AwardSection emoji="🪣" title="Wooden Spoon" description="Most wrong on-time predictions in completed matches">
+      <AwardSection emoji="🥄" title="Wooden Spoon" description="Most wrong on-time predictions in completed matches">
         <RankList showAll={showAll} rows={woodenSpoon} />
         <LuckyDraw rows={woodenSpoon} />
       </AwardSection>
