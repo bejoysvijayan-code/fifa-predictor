@@ -8,14 +8,19 @@ export function sortLeaderboard(users) {
   });
 }
 
+const TEAM_NAME_ALIASES = {
+  'cabo verde': 'cape verde',
+};
+
 export function normalizeTeamName(name) {
   if (!name) return '';
-  return name
+  const n = name
     .trim()
     .toLowerCase()
     .replace(/\s*&\s*/g, ' and ')
     .replace(/\s*-\s*/g, ' ')
     .replace(/\s+/g, ' ');
+  return TEAM_NAME_ALIASES[n] ?? n;
 }
 
 export function getPredictionStatus(prediction, match) {

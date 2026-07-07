@@ -138,6 +138,7 @@ export const COUNTRY_CODES = {
   Gabon:                      'ga',
   'Equatorial Guinea':        'gq',
   'Cape Verde':               'cv',
+  'Cabo Verde':               'cv',
   Comoros:                    'km',
   Libya:                      'ly',
   Gambia:                     'gm',
