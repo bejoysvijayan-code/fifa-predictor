@@ -1,3 +1,5 @@
+import { getCountryCode } from './countryFlags';
+
 export function sortLeaderboard(users) {
   return [...users].sort((a, b) => {
     if (b.correctPredictions !== a.correctPredictions)
@@ -82,11 +84,28 @@ export const TEAM_FLAGS = {
   Bosnia_Herzegovina: '🇧🇦',
 };
 
+const SUBDIVISION_FLAGS = {
+  'gb-eng': '🏴󠁧󠁢󠁥󠁮󠁧󠁿',
+  'gb-sct': '🏴󠁧󠁢󠁳󠁣󠁴󠁿',
+  'gb-wls': '🏴󠁧󠁢󠁷󠁬󠁳󠁿',
+  'gb-nir': '🇬🇧',
+};
+
 export function getFlag(teamName) {
   if (!teamName) return '🏳️';
   const key = teamName.replace(/\s+/g, '_');
   if (TEAM_FLAGS[key]) return TEAM_FLAGS[key];
   const norm = normalizeTeamName(teamName);
   const entry = Object.entries(TEAM_FLAGS).find(([k]) => normalizeTeamName(k.replace(/_/g, ' ')) === norm);
-  return entry ? entry[1] : '🏳️';
+  if (entry) return entry[1];
+  // Fall back to countryFlags.js → generate emoji from ISO code
+  const code = getCountryCode(teamName) ?? getCountryCode(norm);
+  if (!code) return '🏳️';
+  if (SUBDIVISION_FLAGS[code]) return SUBDIVISION_FLAGS[code];
+  if (code.length === 2) {
+    return [...code.toUpperCase()]
+      .map((c) => String.fromCodePoint(0x1f1e6 + c.charCodeAt(0) - 65))
+      .join('');
+  }
+  return '🏳️';
 }
