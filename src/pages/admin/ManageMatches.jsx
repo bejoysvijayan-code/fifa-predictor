@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { getMatches, createMatch, updateMatch, deleteMatch, getGroups } from '../../firebase/services';
 import { Timestamp } from 'firebase/firestore';
-import { formatKickoff, getFlag } from '../../utils/scoring';
+import { formatKickoff } from '../../utils/scoring';
+import CircleFlag from '../../components/CircleFlag';
 
 const STATUS_OPTIONS = ['upcoming', 'live', 'completed'];
 
@@ -294,7 +295,7 @@ export default function ManageMatches() {
                             <span className="text-xs" style={{ color: 'var(--c-t3)' }}>✏️</span>
                           </button>
                         )}
-                        {getFlag(m.homeTeam)} {m.homeTeam} vs {getFlag(m.awayTeam)} {m.awayTeam}
+                        <CircleFlag team={m.homeTeam} size={20} /> {m.homeTeam} vs <CircleFlag team={m.awayTeam} size={20} /> {m.awayTeam}
                         {m.isKnockout && (
                           <span className="text-xs font-medium px-1.5 py-0.5 rounded-full"
                             style={{ background: 'var(--c-gold-bg)', color: 'var(--c-gold)', border: '1px solid var(--c-gold-bd)' }}>
