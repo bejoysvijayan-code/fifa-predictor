@@ -5,7 +5,17 @@ import CountdownTimer from '../components/CountdownTimer';
 import {
   getUser, updateUserProfile, getUserPredictions, getMatches, getAllPredictions, getGroups, getHouses,
 } from '../firebase/services';
-import { getPredictionStatus, getFlag } from '../utils/scoring';
+import { getPredictionStatus, getFlag, normalizeTeamName } from '../utils/scoring';
+import CircleFlag from '../components/CircleFlag';
+
+// ── Constants ─────────────────────────────────────────
+const AFRICAN_TEAMS = new Set([
+  'Morocco', 'Senegal', 'Egypt', 'Nigeria', 'Cameroon', 'Ghana',
+  'Ivory Coast', "Côte d'Ivoire", 'South Africa', 'Algeria', 'Tunisia',
+  'Cape Verde', 'Cabo Verde', 'DR Congo', 'Mali', 'Burkina Faso',
+  'Guinea', 'Congo', 'Tanzania', 'Uganda', 'Kenya', 'Zimbabwe', 'Zambia',
+]);
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 // ── Badge computation ──────────────────────────────────
 function computeBadges(userPreds, allMatches, allPreds, uid) {
@@ -64,6 +74,125 @@ function computeBadges(userPreds, allMatches, allPreds, uid) {
   return { maxStreak, contrarian, nightOwl, triggerFinger };
 }
 
+// ── Fun Facts computation ──────────────────────────────
+function computeFunFacts(userPreds, allMatches, allPreds, uid) {
+  const matchMap = {};
+  allMatches.forEach((m) => { matchMap[m.id] = m; });
+
+  const predCounts = {};
+  allPreds.forEach((p) => {
+    if (!predCounts[p.matchId]) predCounts[p.matchId] = {};
+    predCounts[p.matchId][p.prediction] = (predCounts[p.matchId][p.prediction] || 0) + 1;
+  });
+
+  const firstVoter = {};
+  allPreds.forEach((p) => {
+    if (!p.predictionTime) return;
+    const t = p.predictionTime.toDate ? p.predictionTime.toDate() : new Date(p.predictionTime);
+    if (!firstVoter[p.matchId] || t < firstVoter[p.matchId].time)
+      firstVoter[p.matchId] = { uid: p.userId, time: t };
+  });
+
+  const completedPreds = userPreds.filter((p) => {
+    const m = matchMap[p.matchId];
+    return m && m.status === 'completed' && m.result?.winner;
+  });
+  const completedTotal = allMatches.filter((m) => m.status === 'completed' && m.result?.winner).length;
+
+  // 1. Most Backed Team
+  const teamCounts = {};
+  userPreds.forEach((p) => { if (p.prediction) teamCounts[p.prediction] = (teamCounts[p.prediction] || 0) + 1; });
+  const mostBackedEntry = Object.entries(teamCounts).sort((a, b) => b[1] - a[1])[0];
+  const mostBacked = mostBackedEntry ? { team: mostBackedEntry[0], count: mostBackedEntry[1] } : null;
+
+  // 2/6/12. Crowd following %
+  let majorityPicks = 0, crowdTotal = 0;
+  completedPreds.forEach((p) => {
+    const counts = predCounts[p.matchId];
+    if (!counts) return;
+    const majority = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0];
+    if (!majority) return;
+    crowdTotal++;
+    if (normalizeTeamName(p.prediction) === normalizeTeamName(majority)) majorityPicks++;
+  });
+  const crowdPct = crowdTotal > 0 ? Math.round(majorityPicks / crowdTotal * 100) : null;
+
+  // 3. Participation
+  const participationPct = completedTotal > 0 ? Math.round(completedPreds.length / completedTotal * 100) : null;
+
+  // 6. Most Accurate Round
+  const acc = (preds) => {
+    if (!preds.length) return null;
+    const c = preds.filter((p) => normalizeTeamName(p.prediction) === normalizeTeamName(matchMap[p.matchId]?.result?.winner)).length;
+    return { correct: c, total: preds.length, pct: Math.round(c / preds.length * 100) };
+  };
+  const groupAcc = acc(completedPreds.filter((p) => !matchMap[p.matchId]?.isKnockout));
+  const koAcc = acc(completedPreds.filter((p) => matchMap[p.matchId]?.isKnockout));
+  let bestRound = null;
+  if (groupAcc && koAcc) bestRound = groupAcc.pct >= koAcc.pct ? { name: 'Group Stage', ...groupAcc } : { name: 'Knockout', ...koAcc };
+  else if (groupAcc) bestRound = { name: 'Group Stage', ...groupAcc };
+  else if (koAcc) bestRound = { name: 'Knockout', ...koAcc };
+
+  // 7. Lucky Day
+  const dayCorrect = {};
+  completedPreds.forEach((p) => {
+    const m = matchMap[p.matchId];
+    if (!m || normalizeTeamName(p.prediction) !== normalizeTeamName(m.result?.winner)) return;
+    const ko = m.kickoffTime?.toDate ? m.kickoffTime.toDate() : m.kickoffTime ? new Date(m.kickoffTime) : null;
+    if (ko) dayCorrect[ko.getDay()] = (dayCorrect[ko.getDay()] || 0) + 1;
+  });
+  const luckyEntry = Object.entries(dayCorrect).sort((a, b) => b[1] - a[1])[0];
+  const luckyDay = luckyEntry ? { day: DAY_NAMES[+luckyEntry[0]], count: +luckyEntry[1] } : null;
+
+  // 8. One Team Fan
+  const oneTeamFan = mostBackedEntry && userPreds.length >= 5 && (mostBackedEntry[1] / userPreds.length) >= 0.35
+    ? { team: mostBackedEntry[0], pct: Math.round(mostBackedEntry[1] / userPreds.length * 100) } : null;
+
+  // 9. Never Backs Africa
+  let africaVotes = 0;
+  userPreds.forEach((p) => { if (AFRICAN_TEAMS.has(p.prediction)) africaVotes++; });
+  const neverAfrica = userPreds.length >= 10 && africaVotes === 0;
+
+  // 10. First to Vote
+  const firstToVote = userPreds.filter((p) => firstVoter[p.matchId]?.uid === uid).length;
+
+  // 11. Flip Flopper — backed a team in some matches but not others
+  const teamAppearances = {};
+  userPreds.forEach((p) => {
+    const m = matchMap[p.matchId];
+    if (!m) return;
+    [m.homeTeam, m.awayTeam].forEach((t) => {
+      if (!teamAppearances[t]) teamAppearances[t] = { backed: 0, total: 0 };
+      teamAppearances[t].total++;
+      if (normalizeTeamName(p.prediction) === normalizeTeamName(t)) teamAppearances[t].backed++;
+    });
+  });
+  const flipFlopTeams = Object.values(teamAppearances).filter(
+    ({ backed, total }) => total >= 2 && backed > 0 && backed < total
+  ).length;
+
+  // 13. Giant Killer — correctly picked the underdog
+  let giantKills = 0;
+  completedPreds.forEach((p) => {
+    const m = matchMap[p.matchId];
+    const counts = predCounts[p.matchId];
+    if (!m || !counts) return;
+    const majority = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0];
+    if (!majority) return;
+    if (normalizeTeamName(p.prediction) !== normalizeTeamName(majority) &&
+        normalizeTeamName(p.prediction) === normalizeTeamName(m.result?.winner)) giantKills++;
+  });
+
+  // 14. Lone Wolf — only person to pick that team
+  let loneWolf = 0;
+  userPreds.forEach((p) => {
+    const counts = predCounts[p.matchId];
+    if (counts && (counts[p.prediction] || 0) === 1) loneWolf++;
+  });
+
+  return { mostBacked, crowdPct, participationPct, completedPreds: completedPreds.length, completedTotal, bestRound, luckyDay, oneTeamFan, neverAfrica, firstToVote, flipFlopTeams, giantKills, loneWolf };
+}
+
 const BADGE_DEFS = [
   { key: 'maxStreak',     emoji: '🔥', label: 'Longest Streak',  unit: (v) => `${v} correct in a row`,   desc: 'Most consecutive correct predictions' },
   { key: 'contrarian',   emoji: '🦅', label: 'Contrarian',       unit: (v) => `${v} against the crowd`,  desc: 'Picked against the majority vote' },
@@ -105,6 +234,7 @@ export default function Profile() {
 
   const [profile, setProfile] = useState(null);
   const [badges, setBadges] = useState(null);
+  const [funFacts, setFunFacts] = useState(null);
   const [preds, setPreds] = useState([]);
   const [matches, setMatches] = useState([]);
   const [selectedStat, setSelectedStat] = useState(null);
@@ -149,6 +279,7 @@ export default function Profile() {
       setFavoriteTeam(userData?.favoriteTeam || '');
       setFavoritePlayer(userData?.favoritePlayer || '');
       setBadges(computeBadges(userPreds, allMatches, allPreds, targetUid));
+      setFunFacts(computeFunFacts(userPreds, allMatches, allPreds, targetUid));
       setPreds(userPreds);
       setMatches(allMatches);
       setLoading(false);
@@ -542,6 +673,110 @@ export default function Profile() {
           </div>
         </div>
       )}
+
+      {/* ── Fun Facts ── */}
+      {funFacts && (() => {
+        const { mostBacked, crowdPct, participationPct, completedPreds: cp, completedTotal, bestRound, luckyDay, oneTeamFan, neverAfrica, firstToVote, flipFlopTeams, giantKills, loneWolf } = funFacts;
+
+        const crowdLabel = crowdPct === null ? null
+          : crowdPct >= 65 ? { label: 'Safe Player', desc: 'Sticks with the crowd', emoji: '🐑' }
+          : crowdPct <= 35 ? { label: 'Maverick', desc: 'Loves going against the crowd', emoji: '🦅' }
+          : { label: 'Balanced', desc: 'Mix of safe and bold picks', emoji: '⚖️' };
+
+        const facts = [
+          mostBacked && {
+            team: mostBacked.team,
+            title: 'Most Backed Team',
+            value: `${mostBacked.team} × ${mostBacked.count}`,
+            desc: 'Team predicted to win most often',
+          },
+          crowdLabel && {
+            emoji: crowdLabel.emoji,
+            title: 'Playing Style',
+            value: `${crowdLabel.label} · ${crowdPct}%`,
+            desc: crowdLabel.desc,
+          },
+          participationPct !== null && {
+            emoji: '📋',
+            title: 'Participation',
+            value: `${participationPct}%`,
+            desc: `Voted in ${cp} of ${completedTotal} completed matches`,
+          },
+          bestRound && {
+            emoji: '🎯',
+            title: 'Best Round',
+            value: `${bestRound.name} · ${bestRound.pct}%`,
+            desc: `${bestRound.correct}/${bestRound.total} correct`,
+          },
+          luckyDay && {
+            emoji: '🍀',
+            title: 'Lucky Day',
+            value: luckyDay.day,
+            desc: `${luckyDay.count} correct picks on this day`,
+          },
+          oneTeamFan && {
+            emoji: '❤️',
+            title: 'One-Team Merchant',
+            value: `${oneTeamFan.pct}% backs ${oneTeamFan.team}`,
+            desc: 'Loyally backs the same team',
+          },
+          neverAfrica && {
+            emoji: '🌍',
+            title: 'Skipped Africa',
+            value: 'Never backed an African team',
+            desc: 'Not a single African team pick all tournament',
+          },
+          firstToVote > 0 && {
+            emoji: '⚡',
+            title: 'First to Vote',
+            value: `${firstToVote} time${firstToVote > 1 ? 's' : ''}`,
+            desc: 'Was the first person to predict',
+          },
+          flipFlopTeams > 0 && {
+            emoji: '🔄',
+            title: 'Flip Flopper',
+            value: `${flipFlopTeams} team${flipFlopTeams > 1 ? 's' : ''}`,
+            desc: 'Backed a team in some matches, dropped them in others',
+          },
+          giantKills > 0 && {
+            emoji: '🗡️',
+            title: 'Giant Killer',
+            value: `${giantKills} upset${giantKills > 1 ? 's' : ''}`,
+            desc: 'Correctly picked the underdog to win',
+          },
+          loneWolf > 0 && {
+            emoji: '🐺',
+            title: 'Lone Wolf',
+            value: `${loneWolf} solo pick${loneWolf > 1 ? 's' : ''}`,
+            desc: 'Only person in the group to back that team',
+          },
+        ].filter(Boolean);
+
+        if (!facts.length) return null;
+        return (
+          <div className="rounded-2xl p-5 space-y-4"
+            style={{ background: 'var(--c-card)', border: '1px solid var(--c-border)' }}>
+            <div className="text-[13px] font-semibold" style={{ color: 'var(--c-t1)' }}>⚡ Fun Facts</div>
+            <div className="grid grid-cols-2 gap-3">
+              {facts.map((f, i) => (
+                <div key={i} className="rounded-xl p-3 flex flex-col gap-1"
+                  style={{ background: 'var(--c-surface)', border: '1px solid var(--c-border)' }}>
+                  <div className="flex items-center gap-1.5">
+                    {f.team ? <CircleFlag team={f.team} size={20} /> : <span className="text-xl">{f.emoji}</span>}
+                  </div>
+                  <div className="text-[11px] font-bold uppercase tracking-wide mt-1" style={{ color: 'var(--c-t3)' }}>
+                    {f.title}
+                  </div>
+                  <div className="text-[13px] font-semibold leading-snug" style={{ color: 'var(--c-primary)' }}>
+                    {f.value}
+                  </div>
+                  <div className="text-[10px]" style={{ color: 'var(--c-t3)' }}>{f.desc}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
     </div>
   );
