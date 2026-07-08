@@ -392,12 +392,36 @@ export default function AwardStats() {
       .filter((s) => s.total > 0)
       .sort((a, b) => b.value - a.value);
 
+    // ── Prediction Twins ──────────────────────────────────
+    const pickMap = {};
+    allUids.forEach((uid) => {
+      pickMap[uid] = {};
+      (predsByUser[uid] || []).forEach((p) => { pickMap[uid][p.matchId] = normalizeTeamName(p.prediction); });
+    });
+    const twins = [];
+    for (let i = 0; i < allUids.length; i++) {
+      for (let j = i + 1; j < allUids.length; j++) {
+        const a = allUids[i], b = allUids[j];
+        let same = 0, both = 0;
+        Object.keys(pickMap[a]).forEach((mid) => {
+          if (pickMap[b][mid] !== undefined) { both++; if (pickMap[a][mid] === pickMap[b][mid]) same++; }
+        });
+        if (both >= 5) twins.push({
+          name1: userMap[a]?.displayName || a,
+          name2: userMap[b]?.displayName || b,
+          same, both, pct: Math.round(same / both * 100),
+        });
+      }
+    }
+    twins.sort((a, b) => b.pct - a.pct || b.both - a.both);
+    const predictionTwins = twins.slice(0, 3);
+
     return {
       mainLB, knockoutLB, mostActive, topAccurate, earlyBird,
       contrarian, upsetSpecialist, topStreak, groupStageMVP,
       perfectR32: getPerfect(r32), r32Count: r32.length,
       perfectR16: getPerfect(r16), r16Count: r16.length,
-      woodenSpoon,
+      woodenSpoon, predictionTwins,
     };
   }, [users, preds, matches]);
 
@@ -411,7 +435,7 @@ export default function AwardStats() {
   const {
     mainLB, knockoutLB, mostActive, topAccurate, earlyBird,
     contrarian, upsetSpecialist, topStreak, groupStageMVP,
-    perfectR32, r32Count, perfectR16, r16Count, woodenSpoon,
+    perfectR32, r32Count, perfectR16, r16Count, woodenSpoon, predictionTwins,
   } = awards;
 
   return (
@@ -489,6 +513,27 @@ export default function AwardStats() {
       <AwardSection emoji="🥄" title="Wooden Spoon" description="Most wrong on-time predictions in completed matches">
         <RankList showAll={showAll} rows={woodenSpoon} />
         <LuckyDraw rows={woodenSpoon} />
+      </AwardSection>
+
+      <AwardSection emoji="🔮" title="Prediction Twins" description="Pairs who voted identically most often · minimum 5 matches in common">
+        {predictionTwins.length === 0 ? (
+          <p className="text-[13px] py-2" style={{ color: 'var(--c-t2)' }}>Not enough data yet.</p>
+        ) : (
+          <div>
+            {predictionTwins.map((pair, i) => (
+              <div key={i} className="flex items-center justify-between py-[7px]" style={{ borderBottom: '1px solid var(--c-border)' }}>
+                <div className="flex items-center gap-2">
+                  <span className="text-[13px] w-6 text-center font-medium" style={{ color: 'var(--c-t2)' }}>{MEDALS[i]}</span>
+                  <span className="text-[13px]" style={{ color: 'var(--c-t1)' }}>{pair.name1} & {pair.name2}</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-[13px] font-bold" style={{ color: 'var(--c-gold)' }}>{pair.pct}%</span>
+                  <span className="text-[11px] ml-2" style={{ color: 'var(--c-t2)' }}>{pair.same}/{pair.both} same</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </AwardSection>
     </div>
   );
