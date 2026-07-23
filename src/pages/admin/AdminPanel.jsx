@@ -9,8 +9,9 @@ import ManagePolls from './ManagePolls';
 import ManageHouses from './ManageHouses';
 import UserPollResults from './UserPollResults';
 import AwardStats from './AwardStats';
+import ExportData from './ExportData';
 
-const TABS = ['Matches', 'Results', 'Import', 'Users', 'Groups', 'Houses', 'Polls', 'Schedule', 'Poll Results', 'Awards'];
+const TABS = ['Matches', 'Results', 'Import', 'Users', 'Groups', 'Houses', 'Polls', 'Schedule', 'Poll Results', 'Awards', 'Export'];
 
 export default function AdminPanel() {
   const [tab, setTab] = useState('Matches');
@@ -44,7 +45,7 @@ export default function AdminPanel() {
               if (tab !== t) e.currentTarget.style.background = 'transparent';
             }}
           >
-            {t === 'Import' ? '📥 Import' : t === 'Schedule' ? '📅 Schedule' : t === 'Groups' ? '👥 Groups' : t === 'Polls' ? '📊 Polls' : t === 'Houses' ? '🏠 Houses' : t === 'Poll Results' ? '📋 Poll Results' : t === 'Awards' ? '🏅 Awards' : t}
+            {t === 'Import' ? '📥 Import' : t === 'Schedule' ? '📅 Schedule' : t === 'Groups' ? '👥 Groups' : t === 'Polls' ? '📊 Polls' : t === 'Houses' ? '🏠 Houses' : t === 'Poll Results' ? '📋 Poll Results' : t === 'Awards' ? '🏅 Awards' : t === 'Export' ? '📤 Export' : t}
           </button>
         ))}
       </div>
@@ -59,6 +60,7 @@ export default function AdminPanel() {
       {tab === 'Schedule'     && <QuickAdd />}
       {tab === 'Poll Results' && <UserPollResults />}
       {tab === 'Awards'      && <AwardStats />}
+      {tab === 'Export'      && <ExportData />}
     </div>
   );
 }
